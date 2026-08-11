@@ -1,0 +1,120 @@
+<UserControl x:Class="SickRGB.Views.EffectsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="32,28,32,0">
+            <TextBlock Text="Effects" Style="{StaticResource TitleText}"/>
+            <TextBlock Style="{StaticResource BodyText}" Margin="0,6,0,0" MaxWidth="820" HorizontalAlignment="Left"
+                       Text="The effect your devices follow. They animate together as one scene, spread across the layout you arranged. Any device you gave its own effect keeps that instead."/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" Margin="32,22,18,24" VerticalScrollBarVisibility="Auto">
+            <StackPanel MaxWidth="900" HorizontalAlignment="Left">
+
+                <ListBox x:Name="EffectGallery" Style="{StaticResource GalleryList}"
+                         SelectionChanged="EffectGallery_SelectionChanged"/>
+
+                <!-- description + reactive note -->
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                    <StackPanel>
+                        <TextBlock x:Name="EffectTitle" Style="{StaticResource SubtitleText}"/>
+                        <TextBlock x:Name="EffectDesc" Style="{StaticResource BodyText}" Margin="0,6,0,0"/>
+
+                        <Border x:Name="ReactiveNote" Margin="0,14,0,0" Padding="14,11" CornerRadius="6"
+                                Background="#22000000" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock Text="This effect watches for key presses and clicks" Style="{StaticResource StrongText}" FontSize="13"/>
+                                <TextBlock Style="{StaticResource CaptionText}" Margin="0,5,0,0"
+                                           Text="It only uses where a key sits on the keyboard. Which key you pressed is thrown away immediately, clicks carry no information at all, and nothing is saved or sent anywhere. Your typing is passed straight through, never held back."/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- colours -->
+                <StackPanel x:Name="ColorSection" Margin="0,24,0,0">
+                    <TextBlock Text="Colours" Style="{StaticResource SectionHeaderText}"/>
+                    <WrapPanel x:Name="ColorPanel"/>
+                </StackPanel>
+
+                <!-- speed -->
+                <StackPanel x:Name="SpeedSection" Margin="0,10,0,0">
+                    <Grid>
+                        <TextBlock Text="Speed" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="SpeedValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="SpeedSlider" Style="{StaticResource FluentSlider}" MaxWidth="520"
+                            HorizontalAlignment="Left" Width="520" ValueChanged="Speed_Changed"/>
+                </StackPanel>
+
+                <!-- intensity -->
+                <StackPanel x:Name="IntensitySection" Margin="0,14,0,0">
+                    <Grid>
+                        <TextBlock x:Name="IntensityLabel" Text="Intensity" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="IntensityValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="IntensitySlider" Style="{StaticResource FluentSlider}" MaxWidth="520"
+                            HorizontalAlignment="Left" Width="520" ValueChanged="Intensity_Changed"/>
+                </StackPanel>
+
+                <!-- brightness -->
+                <StackPanel Margin="0,14,0,0">
+                    <Grid>
+                        <TextBlock Text="Master brightness" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="BrightnessValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="BrightnessSlider" Style="{StaticResource FluentSlider}" MaxWidth="520"
+                            HorizontalAlignment="Left" Width="520" ValueChanged="Brightness_Changed"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               Text="Applies to every device, whatever effect it is running."/>
+                </StackPanel>
+
+                <!-- ambient -->
+                <StackPanel x:Name="AmbientSection" Margin="0,26,0,0" Visibility="Collapsed">
+                    <TextBlock Text="Screen capture" Style="{StaticResource SectionHeaderText}"/>
+
+                    <ListBox x:Name="MonitorList" Style="{StaticResource PlainList}" MaxHeight="132" MaxWidth="520"
+                             HorizontalAlignment="Left" Width="520" SelectionChanged="Monitor_Changed"/>
+
+                    <CheckBox x:Name="ChkCanvasMap" Style="{StaticResource ToggleSwitch}" Margin="0,14,0,0"
+                              Content="Follow the screen in both directions" Click="CanvasMap_Click"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="52,4,0,0" MaxWidth="520" HorizontalAlignment="Left"
+                               Text="On, a light in the bottom-right of your layout picks up the bottom-right of the screen. Off, lights only follow left to right, which suits a single row of devices."/>
+
+                    <Grid Margin="0,18,0,0">
+                        <TextBlock Text="Colour boost" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="SaturationValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="SaturationSlider" Style="{StaticResource FluentSlider}" Minimum="1" Maximum="2.5"
+                            MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="Saturation_Changed"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               Text="Averaging a colourful picture tends towards grey, so a little boost usually looks better."/>
+
+                    <Grid Margin="0,16,0,0">
+                        <TextBlock Text="Smoothing" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="SmoothingValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="SmoothingSlider" Style="{StaticResource FluentSlider}" MaxWidth="520"
+                            HorizontalAlignment="Left" Width="520" ValueChanged="Smoothing_Changed"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               Text="Softens quick changes so cuts between scenes do not flash."/>
+
+                    <Grid Margin="0,16,0,0">
+                        <TextBlock Text="Minimum glow" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="FloorValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="FloorSlider" Style="{StaticResource FluentSlider}" Maximum="1" MaxWidth="520"
+                            HorizontalAlignment="Left" Width="520" ValueChanged="Floor_Changed"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               Text="Keeps your lights on during dark scenes instead of letting them go black. At 100% they never dim below full brightness."/>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

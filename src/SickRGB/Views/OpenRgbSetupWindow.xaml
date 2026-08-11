@@ -1,0 +1,147 @@
+<Window x:Class="SickRGB.Views.OpenRgbSetupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="Add more lights" Height="660" Width="680"
+        Background="{StaticResource AppBackgroundBrush}"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="40" ResizeBorderThickness="0"
+                            GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Background="Transparent">
+            <TextBlock Text="Add more lights" FontSize="12" Margin="16,0,0,0" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+            <Button Style="{StaticResource CloseCaptionButton}" Content="&#xE8BB;" HorizontalAlignment="Right"
+                    shell:WindowChrome.IsHitTestVisibleInChrome="True" Click="Close_Click"/>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" Margin="28,4,16,0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,12,0">
+
+                <TextBlock Text="Add your RAM, motherboard and case lights"
+                           Style="{StaticResource TitleText}" FontSize="24" TextWrapping="Wrap"/>
+                <TextBlock Style="{StaticResource BodyText}" Margin="0,8,0,0"
+                           Text="OpenRGB is a free, open-source app that knows how to talk to memory, motherboards, graphics cards, coolers and case fans. SickRGB connects to it on this PC, and everything it finds becomes a light you can arrange and animate."/>
+
+                <!-- current state -->
+                <Border Style="{StaticResource Card}" Margin="0,18,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="StateDot" Width="9" Height="9" VerticalAlignment="Center"
+                                     Fill="{StaticResource TextTertiaryBrush}"/>
+                            <TextBlock x:Name="StateTitle" Text="Checking..." Style="{StaticResource StrongText}"
+                                       Margin="10,0,0,0"/>
+                        </StackPanel>
+                        <TextBlock x:Name="StateDetail" Style="{StaticResource CaptionText}" Margin="19,6,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- administrator -->
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                    <StackPanel>
+                        <CheckBox x:Name="ChkElevate" Style="{StaticResource ToggleSwitch}" IsChecked="True"
+                                  Content="Start OpenRGB as administrator  (Recommended)"
+                                  Click="Elevate_Click"/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="52,8,0,0"
+                                   Text="Memory modules and most motherboards can only be reached with administrator rights. Leave this on unless you have a reason not to. Windows will ask you to confirm."/>
+                        <TextBlock x:Name="ElevateNote" Style="{StaticResource CaptionText}" Margin="52,8,0,0"
+                                   Foreground="{StaticResource WarningBrush}" Visibility="Collapsed"
+                                   Text="OpenRGB is already running. Restart it to apply this change."/>
+                    </StackPanel>
+                </Border>
+
+                <!-- PawnIO -->
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="PawnIoDot" Width="9" Height="9" VerticalAlignment="Center"
+                                     Fill="{StaticResource TextTertiaryBrush}"/>
+                            <TextBlock x:Name="PawnIoTitle" Text="Driver for memory and motherboard lighting"
+                                       Style="{StaticResource StrongText}" Margin="10,0,0,0"/>
+                        </StackPanel>
+
+                        <TextBlock Style="{StaticResource BodyText}" Margin="19,8,0,0"
+                                   Text="Memory, most motherboards and some graphics cards are reached over a low-level bus that Windows only exposes through the PawnIO driver. Without it those devices never show up, and OpenRGB reports that the interfaces failed to start."/>
+
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="19,8,0,0"
+                                   Foreground="{StaticResource WarningBrush}"
+                                   Text="PawnIO is a third-party system driver. SickRGB will not install it for you: it downloads the official installer and hands it over, so you can look it over and cancel if you would rather not."/>
+
+                        <StackPanel Orientation="Horizontal" Margin="19,14,0,0">
+                            <Button x:Name="BtnPawnIo" Content="Get the PawnIO installer"
+                                    Style="{StaticResource StandardButton}" Click="PawnIo_Click"/>
+                            <Button x:Name="BtnPawnIoSite" Content="pawnio.eu"
+                                    Style="{StaticResource SubtleButton}" Margin="8,0,0,0" Click="PawnIoSite_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- first run -->
+                <Border Style="{StaticResource SubtleCard}" Margin="0,14,0,0">
+                    <StackPanel>
+                        <TextBlock Text="What OpenRGB may ask you the first time" Style="{StaticResource StrongText}"/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,8,0,0"
+                                   Text="&#8226;  A warning that some interfaces failed to start. Dismiss it. It only means memory and motherboard lighting are not available yet."/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,5,0,0"
+                                   Text="&#8226;  &quot;Resize the zones&quot;, listing your motherboard's addressable RGB headers. Choose Ignore if nothing is plugged into them, or enter how many LEDs each strip has."/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,8,0,0"
+                                   Text="Leave the OpenRGB window open. Closing it stops the connection and its lights disappear from your layout."/>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock x:Name="SourceNote" Style="{StaticResource CaptionText}" Margin="0,18,0,8"
+                           TextWrapping="Wrap"/>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Background="{StaticResource LayerAltBrush}" Padding="24,14"
+                BorderBrush="{StaticResource StrokeBrush}" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left side swaps between the project link and live progress. -->
+                <Grid Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <Button x:Name="BtnOpenSite" Content="openrgb.org" HorizontalAlignment="Left"
+                            Style="{StaticResource SubtleButton}" Click="OpenSite_Click"/>
+
+                    <StackPanel x:Name="ProgressArea" Visibility="Collapsed">
+                        <TextBlock x:Name="ProgressText" Style="{StaticResource StrongText}" FontSize="13"
+                                   TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="36"/>
+                        <Border Height="6" CornerRadius="3" Background="{StaticResource ControlBrush}"
+                                Margin="0,8,0,0" HorizontalAlignment="Stretch">
+                            <Border x:Name="ProgressFill" Height="6" CornerRadius="3" Width="0"
+                                    HorizontalAlignment="Left" Background="{DynamicResource AccentBrush}"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+
+                <Button x:Name="BtnCancel" Grid.Column="1" Content="Cancel" Visibility="Collapsed"
+                        Style="{StaticResource StandardButton}" Margin="0,0,10,0" Click="Cancel_Click"/>
+
+                <Button x:Name="BtnReinstall" Grid.Column="2" Content="Reinstall"
+                        Style="{StaticResource StandardButton}" Margin="0,0,10,0" Click="Reinstall_Click"
+                        ToolTip="Close OpenRGB, delete this copy and download a fresh one."/>
+
+                <Button x:Name="BtnGo" Grid.Column="3" Content="Download and start"
+                        Style="{StaticResource AccentButton}" Click="Go_Click"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

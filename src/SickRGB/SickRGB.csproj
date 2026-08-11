@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>SickRGB</AssemblyName>
+    <RootNamespace>SickRGB</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Product>SickRGB</Product>
+    <AssemblyTitle>SickRGB</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- WinForms is referenced only for NotifyIcon + Screen enumeration -->
+    <!--
+      WFAC010 asks us to move DPI settings out of the manifest, but that advice is
+      for WinForms apps. This is WPF and the manifest is the correct place to declare
+      PerMonitorV2, which keeps screen-capture coordinates in true pixels.
+    -->
+    <NoWarn>$(NoWarn);CA1416;WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    WinForms and WPF both define Application, KeyEventArgs, Cursors, Color and more.
+    We only touch WinForms through fully-qualified names, so drop its implicit
+    global usings and let the WPF types win unambiguously.
+  -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <!-- The icon is embedded so the window, taskbar and tray can all share one source. -->
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
+
+</Project>

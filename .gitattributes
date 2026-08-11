@@ -1,0 +1,23 @@
+# Normalise line endings so the repo stays consistent regardless of who clones it.
+* text=auto
+
+# Source and docs are text
+*.cs        text diff=csharp
+*.xaml      text
+*.csproj    text
+*.manifest  text
+*.md        text
+*.json      text
+*.gitignore text
+
+# PowerShell scripts must keep CRLF - Windows PowerShell can choke on LF-only files
+*.ps1       text eol=crlf
+
+# Binary assets: never touch these
+*.ico       binary
+*.png       binary
+*.jpg       binary
+*.exe       binary
+*.dll       binary
+*.pdb       binary
+*.bin       binary

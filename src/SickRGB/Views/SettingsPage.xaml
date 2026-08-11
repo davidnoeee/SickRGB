@@ -1,0 +1,129 @@
+<UserControl x:Class="SickRGB.Views.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="32,28,32,0">
+            <TextBlock Text="Settings" Style="{StaticResource TitleText}"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" Margin="32,22,18,24" VerticalScrollBarVisibility="Auto">
+            <StackPanel MaxWidth="820" HorizontalAlignment="Left">
+
+                <!-- ================= sources ================= -->
+                <TextBlock Text="Light sources" Style="{StaticResource SectionHeaderText}"/>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="OpenRGB" Style="{StaticResource StrongText}"/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,6,0,0"
+                                   Text="Adds your memory, motherboard, graphics card, coolers and case fans. SickRGB connects to OpenRGB running on this PC and treats everything it finds as ordinary lights you can arrange and animate."/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,8,0,0"
+                                   Text="Memory and most motherboards also need administrator rights and an extra driver. Setup walks you through both."/>
+
+                        <Button x:Name="BtnWizard" Content="Set up OpenRGB"
+                                Style="{StaticResource AccentButton}" HorizontalAlignment="Left"
+                                Margin="0,16,0,0" Click="Wizard_Click"/>
+
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,14,0,0"
+                                   Text="Already running OpenRGB yourself? Connect to it directly:"/>
+
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="110"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="TxtHost" Grid.Column="0" Margin="0,0,8,0"/>
+                            <TextBox x:Name="TxtPort" Grid.Column="1" Margin="0,0,8,0"/>
+                            <Button x:Name="BtnConnect" Grid.Column="2" Content="Connect"
+                                    Style="{StaticResource StandardButton}" Click="Connect_Click"/>
+                        </Grid>
+
+                        <TextBlock x:Name="OpenRgbStatus" Style="{StaticResource CaptionText}" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <CheckBox x:Name="ChkLogitech" Style="{StaticResource ToggleSwitch}"
+                                  Content="Logitech mice (experimental)" Click="Logitech_Click"/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="52,8,0,0"
+                                   Text="Controls Logitech Lightsync mice directly. Close Logitech G HUB first, or it keeps hold of the mouse and nothing will happen."/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="52,8,0,0"
+                                   Foreground="{StaticResource WarningBrush}"
+                                   Text="Unlike the keyboard, this has not been confirmed on real hardware, so it stays off unless you ask for it. A mouse only shows up if it reports that it can be controlled."/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ================= application ================= -->
+                <TextBlock Text="Application" Style="{StaticResource SectionHeaderText}" Margin="0,26,0,10"/>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <CheckBox x:Name="ChkAutoStart" Style="{StaticResource ToggleSwitch}"
+                                  Content="Start with Windows" Click="AutoStart_Click"/>
+                        <CheckBox x:Name="ChkTray" Style="{StaticResource ToggleSwitch}" Margin="0,14,0,0"
+                                  Content="Keep running in the notification area when closed" Click="Tray_Click"/>
+                        <CheckBox x:Name="ChkStartMin" Style="{StaticResource ToggleSwitch}" Margin="0,14,0,0"
+                                  Content="Start hidden" Click="StartMin_Click"/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="52,4,0,0"
+                                   Text="Your lights still come on. Open the window again from the notification area, or by launching the app."/>
+
+                        <CheckBox x:Name="ChkMica" Style="{StaticResource ToggleSwitch}" Margin="0,16,0,0"
+                                  Content="Use the translucent window background" Click="Mica_Click"/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="52,4,0,0"
+                                   Text="The frosted Windows 11 window material. If the window ever looks empty, turn this off. Applies next time the app starts."/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,20,0,0">
+                            <StackPanel Width="260">
+                                <TextBlock Text="Update rate" Style="{StaticResource StrongText}" FontSize="13"/>
+                                <TextBlock Style="{StaticResource CaptionText}" Margin="0,3,0,0"
+                                           Text="Higher is smoother, lower is gentler on your PC. Individual devices can be set separately on the Devices page - useful for memory, which cannot keep up with fast updates."/>
+                            </StackPanel>
+                            <ComboBox x:Name="CmbFps" Width="130" VerticalAlignment="Center" Margin="16,0,0,0"
+                                      SelectionChanged="Fps_Changed"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ================= privacy ================= -->
+                <TextBlock Text="Watching your typing" Style="{StaticResource SectionHeaderText}" Margin="0,26,0,10"/>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource BodyText}"
+                                   Text="Effects that react to typing or clicking have to notice when you press something. That deserves a straight answer, so here is exactly what happens:"/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,10,0,0"
+                                   Text="&#8226;  Watching only happens while a reactive effect is running, and stops the moment you choose another one."/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,5,0,0"
+                                   Text="&#8226;  A key press becomes a position on the keyboard and is then forgotten. Which key you pressed never leaves that step."/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,5,0,0"
+                                   Text="&#8226;  Clicks carry nothing at all: not the button, not where your cursor was."/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,5,0,0"
+                                   Text="&#8226;  Nothing is saved to disk or sent anywhere. The only connection this app makes is to OpenRGB on your own PC, and only if you set that up."/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,5,0,0"
+                                   Text="&#8226;  Your typing passes straight through. It is watched, never held back or changed."/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ================= about ================= -->
+                <TextBlock Text="About" Style="{StaticResource SectionHeaderText}" Margin="0,26,0,10"/>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="SickRGB" Style="{StaticResource StrongText}"/>
+                        <TextBlock x:Name="AboutText" Style="{StaticResource BodyText}" Margin="0,6,0,0"/>
+                        <Button Content="Open settings folder" Style="{StaticResource StandardButton}"
+                                HorizontalAlignment="Left" Margin="0,14,0,0" Click="OpenConfig_Click"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

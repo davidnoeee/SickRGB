@@ -6,7 +6,7 @@
 
 **RGB lighting for Windows that treats every device you own as lights in one shared space.**
 
-Effects travel across your desk by real distance — a click on your mouse ripples outward and
+Effects travel across your desk by real distance: a click on your mouse ripples outward and
 reaches your keyboard before it reaches your case.
 
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4)](#install)
@@ -40,7 +40,7 @@ Nothing is faked with per-device delays. Arrival time is just distance ÷ speed.
 1. Download **`SickRGB.exe`** from the [latest release](../../releases/latest).
 2. Run it.
 
-That's it. It's a single file with the .NET runtime bundled — nothing to install, no
+That's it. It's a single file with the .NET runtime bundled: nothing to install, no
 administrator rights, nothing written outside your own user folder.
 
 > **Using a Turtle Beach or ROCCAT keyboard?** Close its own software (Swarm II) first. It
@@ -55,7 +55,7 @@ motherboards, graphics cards, coolers and case fans it bridges to
 [OpenRGB](https://openrgb.org/).
 
 Click **Add more lights** in the sidebar. It downloads OpenRGB, starts it out of the way, and
-connects — you don't need to configure anything yourself. Memory and most motherboards also
+connects. You don't need to configure anything yourself. Memory and most motherboards also
 need a driver and administrator rights; the wizard explains and offers both, and nothing is
 installed without you clicking it.
 
@@ -85,13 +85,13 @@ way they share the same canvas, so the result stays spatially coherent.
 ## About watching your typing
 
 Four effects need to know when you press a key or click, which means a system-wide input
-hook — the same mechanism a keylogger uses. Because that deserves a straight answer:
+hook, the same mechanism a keylogger uses. Because that deserves a straight answer:
 
 - The hook is installed **only while a reactive effect is running**, and removed the moment
   you pick another.
 - A key press is turned into a **position on the keyboard** inside the hook callback and then
   dropped. Which key you pressed never leaves that callback.
-- Clicks carry **nothing at all** — not the button, not the cursor position.
+- Clicks carry **nothing at all**: not the button, not the cursor position.
 - Nothing is stored, written to disk, or transmitted. The only network connection the app
   makes is to OpenRGB on your own machine, and only if you set that up.
 - Every event is passed straight on. Input is observed, never intercepted or altered.
@@ -130,7 +130,7 @@ script installs it into your user folder.
 
 ## Contributing
 
-Contributions are welcome — especially **support for more hardware**.
+Contributions are welcome, especially **support for more hardware**.
 
 Adding a device means writing a single small class. The effect engine, the canvas and the UI
 never need to know it exists. See [CONTRIBUTING.md](CONTRIBUTING.md) for a walkthrough,
@@ -139,7 +139,7 @@ the project layout, and the house style.
 Good first issues:
 
 - A native driver for a keyboard or mouse you own
-- More effects (they're pure functions of position and time — see `EffectLibrary.cs`)
+- More effects (they're pure functions of position and time; see `EffectLibrary.cs`)
 - Better default device shapes and canvas placement
 - Anything in the issue tracker
 
@@ -154,7 +154,7 @@ packet layout, and the checksum.
 
 Short version: Turtle Beach re-badged the ROCCAT Magma and changed its USB ID from
 `1E7D:3124` to `10F5:5024`. OpenRGB has the ROCCAT one in its device table but not the Turtle
-Beach one, so it never claims the keyboard — even though the protocol is byte-for-byte
+Beach one, so it never claims the keyboard, even though the protocol is byte-for-byte
 identical.
 
 ---

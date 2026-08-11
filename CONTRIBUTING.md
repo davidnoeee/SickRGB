@@ -1,6 +1,6 @@
 # Contributing to SickRGB
 
-Thanks for taking a look. The most useful contribution is **support for more hardware** —
+Thanks for taking a look. The most useful contribution is **support for more hardware**:
 adding a device means writing one small class, and nothing above it needs to change.
 
 ---
@@ -53,7 +53,7 @@ know what an effect is.
 
 ## Adding a device
 
-Implement `ILightProvider` — six members:
+Implement `ILightProvider`, which has six members:
 
 ```csharp
 public sealed class MyKeyboardProvider : ILightProvider
@@ -79,12 +79,12 @@ A few things that will save you time:
   Getting this roughly right makes the default canvas layout sensible.
 - **`LightDevice.StripZones` and `GridZones`** cover most layouts.
 - **`Apply` must be cheap.** It is called from the render thread. If your transport can
-  block — a network socket, a slow bus — hand the frame to a background writer and return
+  block (a network socket, a slow bus), hand the frame to a background writer and return
   immediately. `OpenRgbProvider` does exactly this and is worth copying.
 - **Set `MaxUpdatesPerSecond`** if the hardware can't take 60 fps. Sending faster than a
   device can absorb doesn't make it smoother; it just builds a backlog so what you see lags
   behind what the effect is doing.
-- **`Release` should leave the device in a sane state** — usually black, or handed back to
+- **`Release` should leave the device in a sane state**: usually black, or handed back to
   its own onboard control.
 - **Don't tear down a healthy handle during rediscovery.** Reuse it. Closing and reopening
   mid-session shows up as a visible flicker.
@@ -112,7 +112,7 @@ use `ctx.Distance(point, impulse)` for anything distance-based, so speed stays c
 whatever the canvas looks like.
 
 For reactive effects, override `OnImpulse` and keep an `ImpulseSet`. Write the render as a
-**sum over live impulses** rather than per-light accumulators — that way the effect doesn't
+**sum over live impulses** rather than per-light accumulators. That way the effect doesn't
 care how many lights exist, and devices can appear or disappear mid-animation.
 
 ---
@@ -125,7 +125,7 @@ The codebase aims to read like one person wrote it.
   A comment restating the code earns nothing.
 - Match the surrounding naming, spacing and structure.
 - Prefer clarity over cleverness; this is a hobby app people will read to learn from.
-- Handle failure quietly and specifically. Devices get unplugged and sockets die — that's
+- Handle failure quietly and specifically. Devices get unplugged and sockets die; that's
   normal, not exceptional. Never let it take the app down.
 - No new dependencies without a good reason. The app currently has zero NuGet packages, and
   that's worth keeping.
@@ -137,7 +137,7 @@ The codebase aims to read like one person wrote it.
 - `.\build.ps1` completes with no warnings.
 - The app launches, finds your devices, and effects run.
 - If you touched device code, test **unplugging and replugging** mid-run.
-- If you touched the engine, watch CPU for a minute — it should sit near 1–2%.
+- If you touched the engine, watch CPU for a minute; it should sit near 1-2%.
 - Say what hardware you tested on. "Untested, written from a datasheet" is a fine thing to
   admit, and much better than leaving it to be discovered.
 
@@ -146,5 +146,5 @@ The codebase aims to read like one person wrote it.
 ## Reporting a bug
 
 Include your Windows version, which devices are connected, and whether OpenRGB is running
-(and whether elevated). If lighting is the problem, say which effect was active — that is
+(and whether elevated). If lighting is the problem, say which effect was active; that is
 usually enough to reproduce it.

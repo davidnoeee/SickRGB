@@ -1,4 +1,4 @@
-# Turtle Beach Magma — RGB lighting protocol
+# Turtle Beach Magma RGB lighting protocol
 
 Reverse-engineered and verified against a **Turtle Beach Magma, USB `10F5:5024`, firmware 1.08**.
 
@@ -56,7 +56,7 @@ response: 04 01 00 00 00 05 01 00 FC
 
 ## 3. Enabling direct (software) control
 
-`HidD_SetFeature` on the control handle, exactly 5 bytes — **no padding needed**:
+`HidD_SetFeature` on the control handle, exactly 5 bytes, with **no padding needed**:
 
 ```
 0E 05 01 00 00     enable direct mode
@@ -100,7 +100,7 @@ OpenRGB's `RoccatVulcanKeyboardController::SendColors` treats the Magma as
 
 which is the table above.
 
-Example — all zones red:
+Example (all zones red):
 
 ```
 00 A1 01 40 FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 ... 00
@@ -139,7 +139,7 @@ Sent with `HidD_SetFeature` on the control handle.
   not demand exclusive access.
 - **No elevation required.** Everything here works as a normal user.
 - **Direct mode is transient.** It does not write to onboard profile storage, so nothing is
-  permanently altered — unplug and replug and the keyboard is back to its stored profile.
+  permanently altered: unplug and replug and the keyboard is back to its stored profile.
 - Feature reports are accepted at their natural length; only the *read* path insists on a
   buffer of at least 9 bytes.
 

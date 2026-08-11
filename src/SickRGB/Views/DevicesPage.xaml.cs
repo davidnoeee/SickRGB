@@ -222,6 +222,7 @@ public partial class DevicesPage : UserControl, IRefreshablePage
         controls.Children.Add(LabelledControl("Role", BuildRoleCombo(device, settings), 168));
         controls.Children.Add(LabelledControl("Lighting", BuildEffectCombo(device, settings), 210));
         controls.Children.Add(LabelledControl("Update rate", BuildRateCombo(device, settings), 196));
+        controls.Children.Add(LabelledControl("Music range", BuildAudioRangeCombo(device, settings), 178));
 
         var flip = new CheckBox
         {
@@ -438,6 +439,37 @@ public partial class DevicesPage : UserControl, IRefreshablePage
 
         combo.ToolTip = "How often this device is sent new colours. Lower it for hardware on a slow "
                       + "connection - sending faster than it can keep up only makes it lag behind.";
+        return combo;
+    }
+
+    /// <summary>
+    /// Which part of the music this device shows when the visualiser runs.
+    ///
+    /// Splitting the spectrum across devices is what stops the visualiser looking like
+    /// noise: give the keyboard the whole range, the mouse the bass, the case the treble,
+    /// and each one has a clear job.
+    /// </summary>
+    private ComboBox BuildAudioRangeCombo(LightDevice device, DeviceSettings settings)
+    {
+        var combo = new ComboBox();
+        var ranges = Enum.GetValues<Audio.AudioRange>();
+
+        foreach (var range in ranges) combo.Items.Add(Audio.AudioRanges.Label(range));
+        combo.SelectedIndex = Math.Max(0, Array.IndexOf(ranges, settings.AudioRange));
+
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (_building) return;
+            int i = combo.SelectedIndex;
+            if (i < 0 || i >= ranges.Length) return;
+
+            settings.AudioRange = ranges[i];
+            _services.Settings.Save();
+            _services.Engine.Invalidate();
+        };
+
+        combo.ToolTip = "Used by the Music Visualiser. Devices with only a few lights pulse with "
+                      + "the volume of their range; devices with more show it as a spectrum.";
         return combo;
     }
 

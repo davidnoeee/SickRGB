@@ -327,15 +327,26 @@ public sealed class TypingHeatEffect : Effect
 //  Audio visualiser
 // =====================================================================================
 
-/// <summary>Turns whatever is playing into light, spread across your layout by frequency.</summary>
+/// <summary>Turns whatever is playing into light, one display per device.</summary>
 public sealed class AudioVisualizerEffect : Effect
 {
+    /// <summary>
+    /// Below this many lights, a device shows the average level of its range rather than
+    /// trying to draw a spectrum. Three or four lights cannot describe a shape; asking
+    /// them to just looks like noise.
+    /// </summary>
+    private const int MinLightsForSpectrum = 5;
+
     public override string Id => "audio";
     public override string Name => "Music Visualiser";
     public override string Description =>
-        "Listens to whatever your PC is playing and spreads it across your lights by frequency. "
-      + "Bass, mids and treble each get their own part of the layout.";
-    public override string[] ColorLabels => new[] { "Quiet", "Loud" };
+        "Listens to whatever your PC is playing. Every device becomes its own display: one with "
+      + "plenty of lights shows a spectrum, one with only a few pulses with the volume. Each device "
+      + "can be set to a different part of the music on the Devices page.";
+
+    public override string[] ColorLabels =>
+        new[] { "Bass", "Low mids", "Mids", "High mids", "Treble" };
+
     public override bool UsesAudio => true;
     public override bool UsesSpeed => false;
 
@@ -348,14 +359,33 @@ public sealed class AudioVisualizerEffect : Effect
             return;
         }
 
-        var quiet = RgbF.From(ctx.Colors[0]);
-        var loud = RgbF.From(ctx.Colors[1]);
         double floor = Math.Clamp(ctx.AudioFloor, 0, 1);
 
         for (int i = 0; i < points.Length; i++)
         {
-            double position = FrequencyPosition(points[i].X, ctx.AudioLayout);
-            double level = spectrum.SampleAt(position);
+            var point = points[i];
+            double low = point.BandLow;
+            double high = Math.Max(point.BandHigh, low + 1e-4);
+
+            double level;
+            double frequency;
+
+            if (point.DeviceLightCount >= MinLightsForSpectrum)
+            {
+                // Enough lights to draw with: lay this device's slice of the spectrum
+                // across the device itself, not across the room.
+                double across = SpreadPosition(point.DeviceX, ctx.AudioLayout);
+                frequency = low + across * (high - low);
+                level = spectrum.SampleAt(frequency);
+            }
+            else
+            {
+                // Too few lights for a shape, so show how loud this slice is. The colour
+                // still comes from the middle of the slice, so a bass device reads as a
+                // bass colour.
+                frequency = (low + high) * 0.5;
+                level = spectrum.AverageBetween(low, high);
+            }
 
             // Lift the whole range rather than clamping, so the floor reads as a gentle
             // glow underneath the music instead of a hard cutoff.
@@ -363,15 +393,12 @@ public sealed class AudioVisualizerEffect : Effect
 
             output[i] = ctx.AudioColourMode switch
             {
-                AudioColourMode.Spectrum
-                    // Red at the bass end through to violet at the top.
-                    => RgbF.FromHsv(position * 0.8, 1.0, lit),
+                // Red at the bass end through to violet at the top, like Colour Wave.
+                AudioColourMode.Spectrum => RgbF.FromHsv(frequency * 0.8, 1.0, lit),
 
-                AudioColourMode.Gradient
-                    => quiet.Lerp(loud, level) * lit,
+                AudioColourMode.Palette => PaletteColour(ctx.Colors, frequency) * lit,
 
-                AudioColourMode.Single
-                    => loud * lit,
+                AudioColourMode.Single => RgbF.From(ctx.Colors[0]) * lit,
 
                 // Green through amber to red, the way a level meter reads.
                 _ => RgbF.FromHsv((1.0 - level) * 0.33, 1.0, lit),
@@ -379,13 +406,22 @@ public sealed class AudioVisualizerEffect : Effect
         }
     }
 
-    /// <summary>Maps a light's place on the canvas to a position in the spectrum.</summary>
-    private static double FrequencyPosition(double x, AudioLayout layout) => layout switch
+    /// <summary>Blends the five colour stops across the frequency range.</summary>
+    private static RgbF PaletteColour(Rgb24[] colours, double frequency)
     {
-        AudioLayout.LeftToRight => x,
-        AudioLayout.RightToLeft => 1.0 - x,
-        AudioLayout.BassInCentre => Math.Abs(x - 0.5) * 2.0,
-        _ => 1.0 - Math.Abs(x - 0.5) * 2.0,
+        double t = Math.Clamp(frequency, 0, 1) * (colours.Length - 1);
+        int low = (int)Math.Floor(t);
+        int high = Math.Min(low + 1, colours.Length - 1);
+        return RgbF.From(colours[low]).Lerp(RgbF.From(colours[high]), t - low);
+    }
+
+    /// <summary>Where the bass sits across a single device.</summary>
+    private static double SpreadPosition(double deviceX, AudioLayout layout) => layout switch
+    {
+        AudioLayout.LeftToRight => deviceX,
+        AudioLayout.RightToLeft => 1.0 - deviceX,
+        AudioLayout.BassInCentre => Math.Abs(deviceX - 0.5) * 2.0,
+        _ => 1.0 - Math.Abs(deviceX - 0.5) * 2.0,
     };
 }
 

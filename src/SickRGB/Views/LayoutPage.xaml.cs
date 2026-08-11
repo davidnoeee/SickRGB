@@ -83,8 +83,10 @@ public partial class LayoutPage : UserControl, IRefreshablePage
               + (Math.Abs(d.Scale - 1.0) > 0.01 ? $"   {d.Scale * 100:0}%" : "");
     }
 
-    private void RotateLeft_Click(object sender, RoutedEventArgs e) => Canvas.RotateSelected(-15);
-    private void RotateRight_Click(object sender, RoutedEventArgs e) => Canvas.RotateSelected(15);
+    // 45 degrees: fine enough to sit a device on a diagonal, coarse enough that a couple
+    // of clicks gets you to a right angle.
+    private void RotateLeft_Click(object sender, RoutedEventArgs e) => Canvas.RotateSelected(-45);
+    private void RotateRight_Click(object sender, RoutedEventArgs e) => Canvas.RotateSelected(45);
     private void ScaleUp_Click(object sender, RoutedEventArgs e) => Canvas.ScaleSelected(1.1);
     private void ScaleDown_Click(object sender, RoutedEventArgs e) => Canvas.ScaleSelected(1 / 1.1);
     private void ResetTransform_Click(object sender, RoutedEventArgs e) => Canvas.ResetSelectedTransform();

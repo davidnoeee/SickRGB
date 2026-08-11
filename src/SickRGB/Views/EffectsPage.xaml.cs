@@ -114,26 +114,56 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         IntensityLabel.Text = effect.IntensityLabel;
         SpeedSection.Visibility = effect.UsesSpeed ? Visibility.Visible : Visibility.Collapsed;
         IntensitySection.Visibility = effect.UsesIntensity ? Visibility.Visible : Visibility.Collapsed;
-        ColorSection.Visibility = effect.ColorLabels.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         AmbientSection.Visibility = effect.UsesScreen ? Visibility.Visible : Visibility.Collapsed;
         AudioSection.Visibility = effect.UsesAudio ? Visibility.Visible : Visibility.Collapsed;
         if (effect.UsesAudio) UpdateAudioStatus();
 
-        BuildColorPickers(effect, id);
+        _currentEffect = effect;
+        RefreshColourSection();
         UpdateValueLabels();
     }
 
-    private void BuildColorPickers(Effect effect, string effectId)
+    private Effect? _currentEffect;
+
+    /// <summary>
+    /// Which colour swatches to show.
+    ///
+    /// The visualiser is the one effect where this depends on another setting: a rainbow
+    /// or a level meter picks its own colours, so showing five empty swatches beside them
+    /// would just be clutter.
+    /// </summary>
+    private string[] ColourLabelsFor(Effect effect)
+    {
+        if (effect is not AudioVisualizerEffect) return effect.ColorLabels;
+
+        return _services.Settings.AudioColourMode switch
+        {
+            AudioColourMode.Palette => effect.ColorLabels,
+            AudioColourMode.Single => new[] { "Colour" },
+            _ => Array.Empty<string>(),
+        };
+    }
+
+    private void RefreshColourSection()
+    {
+        if (_currentEffect is null) return;
+
+        var labels = ColourLabelsFor(_currentEffect);
+        ColorSection.Visibility = labels.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        BuildColorPickers(_currentEffect, _currentEffect.Id, labels);
+    }
+
+    private void BuildColorPickers(Effect effect, string effectId, string[] labels)
     {
         ColorPanel.Children.Clear();
         var preset = _services.Settings.PresetFor(effectId);
 
-        for (int i = 0; i < effect.ColorLabels.Length; i++)
+        for (int i = 0; i < labels.Length; i++)
         {
             int slot = i;
             var initial = Rgb24.FromHex(i < preset.Colors.Length ? preset.Colors[i] : "#000000");
 
-            var picker = new ColorPickerButton(effect.ColorLabels[i], initial);
+            var picker = new ColorPickerButton(labels[i], initial);
             picker.ColorChanged += c =>
             {
                 if (slot < preset.Colors.Length)
@@ -243,18 +273,18 @@ public partial class EffectsPage : UserControl, IRefreshablePage
 
     private static readonly (AudioColourMode Mode, string Label)[] ColourModes =
     {
-        (AudioColourMode.Spectrum, "Frequency (bass to treble)"),
-        (AudioColourMode.Gradient, "Your two colours, by level"),
-        (AudioColourMode.Single,   "One colour, brightness only"),
+        (AudioColourMode.Spectrum, "Rainbow across the frequencies"),
+        (AudioColourMode.Palette,  "My own colour per frequency"),
+        (AudioColourMode.Single,   "One colour"),
         (AudioColourMode.Meter,    "Green to red, like a level meter"),
     };
 
     private static readonly (AudioLayout Layout, string Label)[] Layouts =
     {
-        (AudioLayout.BassInCentre, "In the middle, spreading out"),
-        (AudioLayout.BassAtEdges,  "At both edges, treble centre"),
         (AudioLayout.LeftToRight,  "On the left"),
         (AudioLayout.RightToLeft,  "On the right"),
+        (AudioLayout.BassInCentre, "In the middle, spreading out"),
+        (AudioLayout.BassAtEdges,  "At both edges, treble centre"),
     };
 
     private void BuildAudioChoices()
@@ -302,6 +332,9 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         if (i < 0 || i >= ColourModes.Length) return;
         _services.Settings.AudioColourMode = ColourModes[i].Mode;
         _services.Settings.Save();
+
+        // Which swatches make sense depends on the mode just chosen.
+        RefreshColourSection();
     }
 
     private void AudioLayout_Changed(object sender, SelectionChangedEventArgs e)

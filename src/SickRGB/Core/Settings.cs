@@ -28,6 +28,12 @@ public sealed class DeviceSettings
     /// </summary>
     public int? UpdateRate { get; set; }
 
+    /// <summary>
+    /// Which part of the music this device shows when the visualiser is running.
+    /// A keyboard can carry the whole spectrum while a mouse shows only the bass.
+    /// </summary>
+    public SickRGB.Audio.AudioRange AudioRange { get; set; } = SickRGB.Audio.AudioRange.Full;
+
     // ---- canvas placement ----
     public double X { get; set; }
     public double Y { get; set; }
@@ -240,6 +246,9 @@ public sealed class AppSettings
             "wave" => new[] { "#000000", "#FF3C00" },
             "flash" => new[] { "#000000", "#FFFFFF" },
             "heat" => new[] { "#000000", "#FF2200" },
+
+            // Five stops from bass to treble, in the same spirit as Colour Wave.
+            "audio" => new[] { "#FF2D3C", "#FF9114", "#3CE66E", "#00C8FF", "#DC46FF" },
             _ => new[] { "#FF5A1F", "#0066FF", "#00FF88", "#FFAA00", "#AA00FF" },
         };
 

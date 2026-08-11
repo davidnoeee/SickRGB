@@ -235,11 +235,24 @@ public sealed class EffectEngine : IDisposable
         {
             foreach (var member in group.Members)
             {
-                var zones = member.Device.Zones;
+                var device = member.Device;
+                var zones = device.Zones;
+
+                var (bandLow, bandHigh) = SickRGB.Audio.AudioRanges.Bounds(
+                    _settings.DeviceFor(device.Key).AudioRange);
+
                 for (int i = 0; i < zones.Count; i++)
                 {
                     var z = zones[i];
-                    group.Points[member.Offset + i] = new LightPoint(z.NormX, z.NormY, z.WorldX, z.WorldY);
+
+                    // Position across this device specifically, so an effect can treat the
+                    // device as its own display rather than a slice of the whole canvas.
+                    double deviceX = zones.Count <= 1 ? 0.5 : (double)i / (zones.Count - 1);
+                    if (device.Reversed) deviceX = 1.0 - deviceX;
+
+                    group.Points[member.Offset + i] = new LightPoint(
+                        z.NormX, z.NormY, z.WorldX, z.WorldY,
+                        deviceX, zones.Count, bandLow, bandHigh);
                 }
             }
         }

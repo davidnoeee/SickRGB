@@ -18,9 +18,31 @@ public readonly struct LightPoint
     /// <summary>Position in layout units (millimetres).</summary>
     public readonly double WorldX, WorldY;
 
-    public LightPoint(double x, double y, double worldX, double worldY)
+    /// <summary>
+    /// Where this light sits across its own device, 0..1.
+    ///
+    /// Separate from <see cref="X"/> on purpose. Some effects want the whole desk as one
+    /// canvas; others, like the music visualiser, want to treat each device as its own
+    /// display so a keyboard shows a full spectrum while a mouse beside it does its own
+    /// thing.
+    /// </summary>
+    public readonly double DeviceX;
+
+    /// <summary>How many lights the owning device has, so an effect can adapt to it.</summary>
+    public readonly int DeviceLightCount;
+
+    /// <summary>The slice of the audio spectrum this light's device is set to show, 0..1.</summary>
+    public readonly double BandLow, BandHigh;
+
+    public LightPoint(double x, double y, double worldX, double worldY,
+                      double deviceX = 0.5, int deviceLightCount = 1,
+                      double bandLow = 0, double bandHigh = 1)
     {
-        X = x; Y = y; WorldX = worldX; WorldY = worldY;
+        X = x; Y = y;
+        WorldX = worldX; WorldY = worldY;
+        DeviceX = deviceX;
+        DeviceLightCount = deviceLightCount;
+        BandLow = bandLow; BandHigh = bandHigh;
     }
 }
 

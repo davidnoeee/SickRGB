@@ -124,6 +124,8 @@
                             <TextBlock x:Name="AudioStatus" Style="{StaticResource BodyText}"
                                        Text="Listening to whatever your PC is playing."/>
                             <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0"
+                                       Text="Every device is its own display. Devices with plenty of lights show a spectrum; devices with only a few pulse with the volume. Choose which part of the music each one shows on the Devices page."/>
+                            <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0"
                                        Text="Audio is only listened to while this effect is running, and is never recorded or sent anywhere."/>
                         </StackPanel>
                     </Border>
@@ -136,14 +138,17 @@
 
                     <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
                         <StackPanel Width="250" Margin="0,0,20,0">
-                            <TextBlock Text="Colours follow" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
+                            <TextBlock Text="Colours" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
                             <ComboBox x:Name="CmbAudioColour" SelectionChanged="AudioColour_Changed"/>
                         </StackPanel>
                         <StackPanel Width="250">
-                            <TextBlock Text="Bass sits" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
+                            <TextBlock Text="Within each device, bass sits" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
                             <ComboBox x:Name="CmbAudioLayout" SelectionChanged="AudioLayout_Changed"/>
                         </StackPanel>
                     </StackPanel>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" MaxWidth="520"
+                               HorizontalAlignment="Left"
+                               Text="Only affects devices with enough lights to show a spectrum."/>
 
                     <Grid Margin="0,20,0,0">
                         <TextBlock Text="Sensitivity" Style="{StaticResource SectionHeaderText}"/>

@@ -3,17 +3,56 @@ namespace SickRGB.Audio;
 /// <summary>How the visualiser turns levels into colour.</summary>
 public enum AudioColourMode
 {
-    /// <summary>Colour follows frequency: bass through treble across the spectrum.</summary>
+    /// <summary>A rainbow across the frequencies, bass through treble.</summary>
     Spectrum,
 
-    /// <summary>Blends between your two colours as a band gets louder.</summary>
-    Gradient,
+    /// <summary>Your own five colours, one per part of the frequency range.</summary>
+    Palette,
 
     /// <summary>One colour, brightness follows the level.</summary>
     Single,
 
     /// <summary>Green through amber to red as it gets louder, like a level meter.</summary>
     Meter,
+}
+
+/// <summary>Which part of the frequency range a device shows.</summary>
+public enum AudioRange
+{
+    Full,
+    Bass,
+    LowMids,
+    Mids,
+    HighMids,
+    Treble,
+}
+
+public static class AudioRanges
+{
+    /// <summary>
+    /// The slice of the spectrum a range covers, as fractions from bass (0) to treble (1).
+    /// The bands overlap slightly so neighbouring devices feel connected rather than
+    /// cutting off abruptly at a boundary.
+    /// </summary>
+    public static (double Low, double High) Bounds(AudioRange range) => range switch
+    {
+        AudioRange.Bass => (0.00, 0.22),
+        AudioRange.LowMids => (0.15, 0.42),
+        AudioRange.Mids => (0.35, 0.62),
+        AudioRange.HighMids => (0.55, 0.82),
+        AudioRange.Treble => (0.75, 1.00),
+        _ => (0.00, 1.00),
+    };
+
+    public static string Label(AudioRange range) => range switch
+    {
+        AudioRange.Bass => "Bass only",
+        AudioRange.LowMids => "Low mids",
+        AudioRange.Mids => "Mids",
+        AudioRange.HighMids => "High mids",
+        AudioRange.Treble => "Treble only",
+        _ => "Whole range",
+    };
 }
 
 /// <summary>Where the low frequencies sit across your layout.</summary>
@@ -186,6 +225,26 @@ public sealed class SpectrumAnalyzer
         int high = Math.Min(low + 1, BandCount - 1);
         double t = position - low;
         return _smoothed[low] * (1 - t) + _smoothed[high] * t;
+    }
+
+    /// <summary>
+    /// Average level across a slice of the spectrum.
+    ///
+    /// Used for devices with too few lights to show a spectrum: a two-LED mouse cannot
+    /// draw a shape, so it shows how loud its slice is instead.
+    /// </summary>
+    public double AverageBetween(double low, double high)
+    {
+        low = Math.Clamp(low, 0, 1);
+        high = Math.Clamp(high, low, 1);
+
+        int first = (int)Math.Floor(low * (BandCount - 1));
+        int last = (int)Math.Ceiling(high * (BandCount - 1));
+        if (last < first) last = first;
+
+        double total = 0;
+        for (int b = first; b <= last; b++) total += _smoothed[b];
+        return total / (last - first + 1);
     }
 
     /// <summary>In-place iterative radix-2 Cooley-Tukey FFT.</summary>

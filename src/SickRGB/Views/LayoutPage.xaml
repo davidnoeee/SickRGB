@@ -34,19 +34,32 @@
                             ToolTip="Reset every device to a default desk position."/>
                 </StackPanel>
 
-                <!-- Only meaningful with a device selected. -->
+                <!--
+                    Only meaningful with a device selected.
+                    Each glyph lives in its own TextBlock with the font set directly: the
+                    app-wide TextBlock style would otherwise override the icon font on a
+                    plain string Content and leave empty boxes.
+                -->
                 <StackPanel Grid.Column="1" x:Name="TransformBar" Orientation="Horizontal"
                             HorizontalAlignment="Center" VerticalAlignment="Center"
                             Visibility="Collapsed">
-                    <Button Style="{StaticResource StandardButton}" Content="&#xE7AD;" FontFamily="{StaticResource IconFont}"
-                            Padding="10,7" Click="RotateLeft_Click" ToolTip="Rotate 15 degrees anticlockwise"/>
-                    <Button Style="{StaticResource StandardButton}" Content="&#xE7A7;" FontFamily="{StaticResource IconFont}"
-                            Padding="10,7" Margin="6,0,0,0" Click="RotateRight_Click" ToolTip="Rotate 15 degrees clockwise"/>
+                    <Button Style="{StaticResource StandardButton}" Padding="11,6" Click="RotateLeft_Click"
+                            ToolTip="Turn 45 degrees anticlockwise">
+                        <TextBlock Text="&#xE10E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"/>
+                    </Button>
+                    <Button Style="{StaticResource StandardButton}" Padding="11,6" Margin="6,0,0,0" Click="RotateRight_Click"
+                            ToolTip="Turn 45 degrees clockwise">
+                        <TextBlock Text="&#xE10D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"/>
+                    </Button>
 
-                    <Button Style="{StaticResource StandardButton}" Content="&#xE738;" FontFamily="{StaticResource IconFont}"
-                            Padding="10,7" Margin="14,0,0,0" Click="ScaleDown_Click" ToolTip="Make smaller"/>
-                    <Button Style="{StaticResource StandardButton}" Content="&#xE710;" FontFamily="{StaticResource IconFont}"
-                            Padding="10,7" Margin="6,0,0,0" Click="ScaleUp_Click" ToolTip="Make larger"/>
+                    <Button Style="{StaticResource StandardButton}" Padding="11,6" Margin="14,0,0,0" Click="ScaleDown_Click"
+                            ToolTip="Make smaller">
+                        <TextBlock Text="&#xE71F;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"/>
+                    </Button>
+                    <Button Style="{StaticResource StandardButton}" Padding="11,6" Margin="6,0,0,0" Click="ScaleUp_Click"
+                            ToolTip="Make larger">
+                        <TextBlock Text="&#xE8A3;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="15"/>
+                    </Button>
 
                     <Button Style="{StaticResource SubtleButton}" Content="Reset" Margin="14,0,0,0"
                             Click="ResetTransform_Click" ToolTip="Back to upright and original size"/>

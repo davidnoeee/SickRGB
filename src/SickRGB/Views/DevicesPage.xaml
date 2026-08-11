@@ -20,6 +20,21 @@
                 <StackPanel x:Name="ProviderPanel"/>
 
                 <TextBlock Text="Detected devices" Style="{StaticResource SectionHeaderText}" Margin="0,24,0,10"/>
+
+                <!--
+                    Discovery is not reliably one-shot: devices on slow buses answer late, and
+                    OpenRGB keeps finding hardware for a while after its server starts. Rather
+                    than let people conclude their hardware is unsupported, say plainly that
+                    scanning again is expected.
+                -->
+                <Border Style="{StaticResource SubtleCard}" Margin="0,0,0,10" Padding="16,13,16,13">
+                    <StackPanel>
+                        <TextBlock Text="Something missing?" Style="{StaticResource StrongText}"/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,5,0,0"
+                                   Text="Press Rescan devices in the sidebar, and give it a few goes - hardware on a slow connection does not always answer the first time. For memory, motherboard and case lighting, use Reconnect and scan in the OpenRGB window instead, as OpenRGB carries on finding hardware for a while after it starts. If something still has not turned up, close SickRGB and open it again."/>
+                    </StackPanel>
+                </Border>
+
                 <StackPanel x:Name="DevicePanel"/>
 
                 <Border x:Name="EmptyCard" Style="{StaticResource Card}" Visibility="Collapsed">

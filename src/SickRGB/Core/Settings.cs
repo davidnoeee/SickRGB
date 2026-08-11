@@ -31,6 +31,8 @@ public sealed class DeviceSettings
     // ---- canvas placement ----
     public double X { get; set; }
     public double Y { get; set; }
+    public double Rotation { get; set; }
+    public double Scale { get; set; } = 1.0;
     public bool HasPlacement { get; set; }
     public DeviceRole? Role { get; set; }
 
@@ -67,6 +69,22 @@ public sealed class AppSettings
     /// samples by horizontal position only.
     /// </summary>
     public bool AmbientUseCanvasMapping { get; set; } = true;
+
+    // ---- audio visualiser ----
+    /// <summary>Listen to a microphone instead of what the PC is playing.</summary>
+    public bool AudioUseMicrophone { get; set; }
+
+    public double AudioGain { get; set; } = 2.0;
+    public double AudioSmoothing { get; set; } = 0.55;
+    public double AudioNoiseGate { get; set; } = 0.03;
+    public double AudioMinHz { get; set; } = 40;
+    public double AudioMaxHz { get; set; } = 12000;
+
+    public SickRGB.Audio.AudioColourMode AudioColourMode { get; set; } = SickRGB.Audio.AudioColourMode.Spectrum;
+    public SickRGB.Audio.AudioLayout AudioLayout { get; set; } = SickRGB.Audio.AudioLayout.BassInCentre;
+
+    /// <summary>Keeps a little light showing in the quiet parts instead of going black.</summary>
+    public double AudioFloor { get; set; }
 
     // ---- providers ----
     /// <summary>

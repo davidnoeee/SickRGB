@@ -90,6 +90,27 @@ internal static class HidNative
     [DllImport("kernel32.dll", SetLastError = true)]
     public static extern bool CancelIoEx(SafeFileHandleEx h, IntPtr overlapped);
 
+    /// <summary>
+    /// Reads one report, giving up after <paramref name="timeoutMs"/>.
+    ///
+    /// HID reads block until the device has something to say, which for a device that
+    /// does not understand the request is forever. The pending read is cancelled on
+    /// timeout so the handle stays usable for the next attempt.
+    /// </summary>
+    public static byte[]? ReadWithTimeout(SafeFileHandleEx handle, int length, int timeoutMs)
+    {
+        var buffer = new byte[length];
+        var read = Task.Run(() => ReadFile(handle, buffer, buffer.Length, out _, IntPtr.Zero));
+
+        if (!read.Wait(timeoutMs))
+        {
+            try { CancelIoEx(handle, IntPtr.Zero); } catch { /* handle already closing */ }
+            return null;
+        }
+
+        return read.Result ? buffer : null;
+    }
+
     /// <summary>One HID collection (a device can expose several).</summary>
     public sealed record HidCollection(
         string Path,

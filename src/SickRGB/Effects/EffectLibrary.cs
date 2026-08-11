@@ -1,3 +1,4 @@
+using SickRGB.Audio;
 using SickRGB.Core;
 
 namespace SickRGB.Effects;
@@ -323,6 +324,72 @@ public sealed class TypingHeatEffect : Effect
 }
 
 // =====================================================================================
+//  Audio visualiser
+// =====================================================================================
+
+/// <summary>Turns whatever is playing into light, spread across your layout by frequency.</summary>
+public sealed class AudioVisualizerEffect : Effect
+{
+    public override string Id => "audio";
+    public override string Name => "Music Visualiser";
+    public override string Description =>
+        "Listens to whatever your PC is playing and spreads it across your lights by frequency. "
+      + "Bass, mids and treble each get their own part of the layout.";
+    public override string[] ColorLabels => new[] { "Quiet", "Loud" };
+    public override bool UsesAudio => true;
+    public override bool UsesSpeed => false;
+
+    public override void Render(EffectContext ctx, ReadOnlySpan<LightPoint> points, Span<RgbF> output)
+    {
+        var spectrum = ctx.Spectrum;
+        if (spectrum is null)
+        {
+            for (int i = 0; i < output.Length; i++) output[i] = RgbF.Black;
+            return;
+        }
+
+        var quiet = RgbF.From(ctx.Colors[0]);
+        var loud = RgbF.From(ctx.Colors[1]);
+        double floor = Math.Clamp(ctx.AudioFloor, 0, 1);
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            double position = FrequencyPosition(points[i].X, ctx.AudioLayout);
+            double level = spectrum.SampleAt(position);
+
+            // Lift the whole range rather than clamping, so the floor reads as a gentle
+            // glow underneath the music instead of a hard cutoff.
+            double lit = floor + (1.0 - floor) * level;
+
+            output[i] = ctx.AudioColourMode switch
+            {
+                AudioColourMode.Spectrum
+                    // Red at the bass end through to violet at the top.
+                    => RgbF.FromHsv(position * 0.8, 1.0, lit),
+
+                AudioColourMode.Gradient
+                    => quiet.Lerp(loud, level) * lit,
+
+                AudioColourMode.Single
+                    => loud * lit,
+
+                // Green through amber to red, the way a level meter reads.
+                _ => RgbF.FromHsv((1.0 - level) * 0.33, 1.0, lit),
+            };
+        }
+    }
+
+    /// <summary>Maps a light's place on the canvas to a position in the spectrum.</summary>
+    private static double FrequencyPosition(double x, AudioLayout layout) => layout switch
+    {
+        AudioLayout.LeftToRight => x,
+        AudioLayout.RightToLeft => 1.0 - x,
+        AudioLayout.BassInCentre => Math.Abs(x - 0.5) * 2.0,
+        _ => 1.0 - Math.Abs(x - 0.5) * 2.0,
+    };
+}
+
+// =====================================================================================
 //  Screen ambient
 // =====================================================================================
 
@@ -388,6 +455,7 @@ public static class EffectLibrary
         new ReactiveWaveEffect(),
         new ReactiveFlashEffect(),
         new TypingHeatEffect(),
+        new AudioVisualizerEffect(),
         new AmbientEffect(),
     };
 

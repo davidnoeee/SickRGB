@@ -23,11 +23,30 @@ $root    = Split-Path -Parent $MyInvocation.MyCommand.Path
 $project = Join-Path $root 'src\SickRGB\SickRGB.csproj'
 $dist    = Join-Path $root 'dist'
 
-# Prefer dotnet on PATH; fall back to a user-local install.
-$dotnet = (Get-Command dotnet -ErrorAction SilentlyContinue).Source
-if (-not $dotnet) { $dotnet = Join-Path $env:LOCALAPPDATA 'Microsoft\dotnet\dotnet.exe' }
-if (-not (Test-Path $dotnet)) {
-    throw "dotnet SDK not found. Install the .NET 8 SDK, or run: winget install Microsoft.DotNet.SDK.8"
+# Find a dotnet that actually has an SDK.
+#
+# Checking PATH alone is not enough: installing only the .NET *runtime* also puts
+# dotnet.exe on PATH, and it will happily be found and then fail with "No .NET SDKs
+# were found". So each candidate is asked whether it has one.
+function Find-DotnetWithSdk {
+    $candidates = @()
+    $onPath = (Get-Command dotnet -ErrorAction SilentlyContinue).Source
+    if ($onPath) { $candidates += $onPath }
+    $candidates += Join-Path $env:LOCALAPPDATA 'Microsoft\dotnet\dotnet.exe'
+    $candidates += Join-Path $env:ProgramFiles 'dotnet\dotnet.exe'
+
+    foreach ($candidate in ($candidates | Select-Object -Unique)) {
+        if (-not (Test-Path $candidate)) { continue }
+        $sdks = & $candidate --list-sdks 2>$null
+        if ($LASTEXITCODE -eq 0 -and $sdks) { return $candidate }
+    }
+    return $null
+}
+
+$dotnet = Find-DotnetWithSdk
+if (-not $dotnet) {
+    throw "No .NET SDK found (a runtime-only install is not enough). Install the .NET 8 SDK from " +
+          "https://dotnet.microsoft.com/download/dotnet/8.0, or run: winget install Microsoft.DotNet.SDK.8"
 }
 
 # A running instance holds a lock on its own binary.

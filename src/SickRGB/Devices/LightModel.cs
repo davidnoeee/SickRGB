@@ -99,6 +99,20 @@ public sealed class LightDevice
     public double X { get; set; }
     public double Y { get; set; }
 
+    /// <summary>Clockwise rotation about the device's centre, in degrees.</summary>
+    public double Rotation { get; set; }
+
+    /// <summary>
+    /// Uniform size multiplier. Uniform on purpose: stretching a device out of its real
+    /// proportions would make the distances effects rely on describe something that does
+    /// not exist.
+    /// </summary>
+    public double Scale { get; set; } = 1.0;
+
+    /// <summary>Size as drawn and as used for distance, after scaling.</summary>
+    public double ScaledWidth => Width * Scale;
+    public double ScaledHeight => Height * Scale;
+
     /// <summary>User-controlled: whether this device participates at all.</summary>
     public bool Enabled { get; set; } = true;
 
@@ -123,14 +137,35 @@ public sealed class LightDevice
 
     public int ZoneCount => Zones.Count;
 
-    /// <summary>Recomputes every zone's world position from the device position.</summary>
+    /// <summary>
+    /// Recomputes every light's position on the canvas from the device's placement,
+    /// scale and rotation.
+    ///
+    /// Effects measure distance between these points, so rotating or scaling a device
+    /// genuinely changes how an effect travels across it - the picture and the behaviour
+    /// stay in agreement.
+    /// </summary>
     public void UpdateWorldPositions()
     {
+        double radians = Rotation * Math.PI / 180.0;
+        double cos = Math.Cos(radians);
+        double sin = Math.Sin(radians);
+
+        double halfWidth = ScaledWidth / 2.0;
+        double halfHeight = ScaledHeight / 2.0;
+        double centreX = X + halfWidth;
+        double centreY = Y + halfHeight;
+
         foreach (var z in Zones)
         {
             double lx = Reversed ? Width - z.LocalX - z.Width : z.LocalX;
-            z.WorldX = X + lx + z.Width / 2.0;
-            z.WorldY = Y + z.LocalY + z.Height / 2.0;
+
+            // Centre of this light within the device box, scaled.
+            double offsetX = (lx + z.Width / 2.0) * Scale - halfWidth;
+            double offsetY = (z.LocalY + z.Height / 2.0) * Scale - halfHeight;
+
+            z.WorldX = centreX + offsetX * cos - offsetY * sin;
+            z.WorldY = centreY + offsetX * sin + offsetY * cos;
         }
     }
 

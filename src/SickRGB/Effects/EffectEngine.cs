@@ -42,6 +42,12 @@ public sealed class EffectEngine : IDisposable
 
     private List<RenderGroup> _groups = new();
     private ScreenSampler? _sampler;
+
+    // Audio capture is only running while a listening effect is selected; it is torn
+    // down as soon as one is not, so nothing listens in the background needlessly.
+    private SickRGB.Audio.AudioCapture? _audio;
+    private SickRGB.Audio.SpectrumAnalyzer? _spectrum;
+    private readonly SickRGB.Audio.AudioOptions _audioOptions = new();
     private Thread? _thread;
     private volatile bool _running;
     private volatile bool _groupsDirty = true;
@@ -329,6 +335,8 @@ public sealed class EffectEngine : IDisposable
             if (target is not null) _sampler.Capture(target, _settings.Smoothing);
         }
 
+        UpdateAudio(_groups.Any(g => g.Effect.UsesAudio), delta);
+
         double brightness = Math.Clamp(_settings.Brightness, 0, 1);
         bool deviceLost = false;
         bool anyFailureThisFrame = false;
@@ -350,6 +358,11 @@ public sealed class EffectEngine : IDisposable
             _ctx.Saturation = _settings.Saturation;
             _ctx.AmbientFloor = _settings.AmbientFloor;
             _ctx.AmbientUseCanvasMapping = _settings.AmbientUseCanvasMapping;
+            _ctx.Spectrum = _spectrum;
+            _ctx.AudioColourMode = _settings.AudioColourMode;
+            _ctx.AudioLayout = _settings.AudioLayout;
+            _ctx.AudioFloor = _settings.AudioFloor;
+            _ctx.AudioHasSignal = _audio?.HasSignal ?? false;
 
             Array.Clear(group.Scratch);
             group.Effect.Render(_ctx, group.Points, group.Scratch);
@@ -430,6 +443,52 @@ public sealed class EffectEngine : IDisposable
         }
     }
 
+    /// <summary>
+    /// Starts or stops listening, and refreshes the spectrum for this frame.
+    ///
+    /// Capture only exists while an effect actually wants it. Switching to any other
+    /// effect closes the audio device rather than leaving it open in the background.
+    /// </summary>
+    private void UpdateAudio(bool wanted, double delta)
+    {
+        if (!wanted)
+        {
+            if (_audio is not null)
+            {
+                _audio.Dispose();
+                _audio = null;
+                _spectrum = null;
+            }
+            return;
+        }
+
+        // Re-open if the input choice changed.
+        if (_audio is not null && _audio.UseMicrophone != _settings.AudioUseMicrophone)
+        {
+            _audio.Dispose();
+            _audio = null;
+            _spectrum = null;
+        }
+
+        if (_audio is null)
+        {
+            _audio = new SickRGB.Audio.AudioCapture { UseMicrophone = _settings.AudioUseMicrophone };
+            _audio.Start();
+            _spectrum = new SickRGB.Audio.SpectrumAnalyzer();
+        }
+
+        _audioOptions.Gain = _settings.AudioGain;
+        _audioOptions.Smoothing = _settings.AudioSmoothing;
+        _audioOptions.NoiseGate = _settings.AudioNoiseGate;
+        _audioOptions.MinHz = _settings.AudioMinHz;
+        _audioOptions.MaxHz = _settings.AudioMaxHz;
+
+        _spectrum?.Update(_audio, _audioOptions, delta);
+    }
+
+    /// <summary>Whatever went wrong starting audio capture, for the UI to show.</summary>
+    public string? AudioError => _audio?.Error;
+
     private List<CaptureTarget>? _cachedTargets;
     private DateTime _targetsRefreshedAt = DateTime.MinValue;
 
@@ -457,5 +516,8 @@ public sealed class EffectEngine : IDisposable
         Stop();
         _sampler?.Dispose();
         _sampler = null;
+        _audio?.Dispose();
+        _audio = null;
+        _spectrum = null;
     }
 }

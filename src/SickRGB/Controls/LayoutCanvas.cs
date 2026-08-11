@@ -47,6 +47,18 @@ public sealed class LayoutCanvas : FrameworkElement
 
     private Pen _selectedPen = FrozenPen(Color.FromRgb(0xFF, 0x6A, 0x2B), 2);
 
+    /// <summary>Corner grip size, in screen pixels.</summary>
+    private const double HandleRadius = 5;
+
+    private static readonly Brush HandleFill = Frozen(Color.FromRgb(0xFF, 0xFF, 0xFF));
+    private static readonly Pen HandlePen = FrozenPen(Color.FromArgb(0x90, 0x00, 0x00, 0x00), 1);
+
+    // Resize state
+    private LightDevice? _resizing;
+    private double _resizeStartScale;
+    private double _resizeStartDistance;
+    private Point _resizeCentre;
+
     private static Brush Frozen(Color c)
     {
         var b = new SolidColorBrush(c);
@@ -106,8 +118,8 @@ public sealed class LayoutCanvas : FrameworkElement
 
         double minX = devices.Min(d => d.X);
         double minY = devices.Min(d => d.Y);
-        double maxX = devices.Max(d => d.X + d.Width);
-        double maxY = devices.Max(d => d.Y + d.Height);
+        double maxX = devices.Max(d => d.X + d.ScaledWidth);
+        double maxY = devices.Max(d => d.Y + d.ScaledHeight);
 
         // Leave room for the name drawn above each card.
         minY -= 26;
@@ -185,11 +197,21 @@ public sealed class LayoutCanvas : FrameworkElement
     private void DrawDevice(DrawingContext dc, LightDevice device)
     {
         var topLeft = WorldToScreen(device.X, device.Y);
-        double w = device.Width * _scale;
-        double h = device.Height * _scale;
+        double w = device.ScaledWidth * _scale;
+        double h = device.ScaledHeight * _scale;
         var rect = new Rect(topLeft.X, topLeft.Y, w, h);
 
         double radius = Math.Min(8, Math.Min(w, h) / 4);
+
+        // Everything below is drawn in the device's own unrotated frame; the transform
+        // turns the finished card, so lights and handles rotate with it for free.
+        bool rotated = Math.Abs(device.Rotation) > 0.01;
+        if (rotated)
+        {
+            dc.PushTransform(new RotateTransform(device.Rotation,
+                                                 rect.X + rect.Width / 2,
+                                                 rect.Y + rect.Height / 2));
+        }
 
         // Card body
         dc.DrawRoundedRectangle(device.Enabled ? CardBrush : CardDisabledBrush, null, rect, radius, radius);
@@ -200,9 +222,10 @@ public sealed class LayoutCanvas : FrameworkElement
             foreach (var zone in device.Zones)
             {
                 double zx = device.Reversed ? device.Width - zone.LocalX - zone.Width : zone.LocalX;
-                var zTopLeft = WorldToScreen(device.X + zx, device.Y + zone.LocalY);
-                double zw = zone.Width * _scale;
-                double zh = zone.Height * _scale;
+                var zTopLeft = WorldToScreen(device.X + zx * device.Scale,
+                                             device.Y + zone.LocalY * device.Scale);
+                double zw = zone.Width * device.Scale * _scale;
+                double zh = zone.Height * device.Scale * _scale;
 
                 // Inset slightly so neighbouring lights stay visually distinct.
                 double inset = Math.Min(1.5, Math.Min(zw, zh) * 0.12);
@@ -255,18 +278,44 @@ public sealed class LayoutCanvas : FrameworkElement
                 : CardPen;
         dc.DrawRoundedRectangle(null, pen, rect, radius, radius);
 
-        // Name above the card
+        // Corner grips, only on the selected device.
+        if (ReferenceEquals(device, _selected))
+        {
+            foreach (var corner in CornerPoints(rect))
+            {
+                dc.DrawEllipse(HandleFill, HandlePen, corner, HandleRadius, HandleRadius);
+            }
+        }
+
+        if (rotated) dc.Pop();
+
+        // Labels are drawn upright, outside the rotation, so they stay readable however
+        // the device is turned.
         var label = MakeText(device.Name, 12.5, device.Enabled ? LabelBrush : SubLabelBrush);
-        dc.DrawText(label, new Point(rect.X, rect.Y - label.Height - 5));
+        double labelY = rect.Y - label.Height - 5;
+        if (rotated) labelY = Math.Min(labelY, rect.Y + rect.Height / 2 - Math.Max(w, h) / 2 - label.Height - 5);
+        dc.DrawText(label, new Point(rect.X, labelY));
 
         // Role and light count, only when there is room
         if (w > 90)
         {
             string sub = $"{device.Role}  ·  {device.ZoneCount} light{(device.ZoneCount == 1 ? "" : "s")}";
+            if (Math.Abs(device.Rotation) > 0.01) sub += $"  ·  {device.Rotation:0}°";
+            if (Math.Abs(device.Scale - 1.0) > 0.01) sub += $"  ·  {device.Scale * 100:0}%";
+
             var subText = MakeText(sub, 10.5, SubLabelBrush);
-            dc.DrawText(subText, new Point(rect.X + label.Width + 8, rect.Y - subText.Height - 6));
+            dc.DrawText(subText, new Point(rect.X + label.Width + 8, labelY + 1));
         }
     }
+
+    /// <summary>The four corners of a rectangle, clockwise from the top left.</summary>
+    private static Point[] CornerPoints(Rect r) => new[]
+    {
+        new Point(r.Left,  r.Top),
+        new Point(r.Right, r.Top),
+        new Point(r.Right, r.Bottom),
+        new Point(r.Left,  r.Bottom),
+    };
 
     private FormattedText MakeText(string text, double size, Brush brush) =>
         new(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
@@ -276,22 +325,66 @@ public sealed class LayoutCanvas : FrameworkElement
 
     // ------------------------------------------------------------------ interaction
 
+    /// <summary>
+    /// Converts a screen point into a device's own unrotated frame, so hit testing can
+    /// stay a simple rectangle check no matter how the device is turned.
+    /// </summary>
+    private Point ToDeviceSpace(LightDevice d, Point screen)
+    {
+        var world = ScreenToWorld(screen);
+
+        double centreX = d.X + d.ScaledWidth / 2.0;
+        double centreY = d.Y + d.ScaledHeight / 2.0;
+
+        double radians = -d.Rotation * Math.PI / 180.0;
+        double cos = Math.Cos(radians);
+        double sin = Math.Sin(radians);
+
+        double dx = world.X - centreX;
+        double dy = world.Y - centreY;
+
+        return new Point(centreX + dx * cos - dy * sin,
+                         centreY + dx * sin + dy * cos);
+    }
+
     private LightDevice? HitTest(Point screen)
     {
         var devices = _registry?.Devices;
         if (devices is null) return null;
 
-        var world = ScreenToWorld(screen);
-
         // Reverse order so the topmost drawn device wins.
         for (int i = devices.Count - 1; i >= 0; i--)
         {
             var d = devices[i];
-            if (world.X >= d.X && world.X <= d.X + d.Width &&
-                world.Y >= d.Y && world.Y <= d.Y + d.Height)
+            var local = ToDeviceSpace(d, screen);
+
+            if (local.X >= d.X && local.X <= d.X + d.ScaledWidth &&
+                local.Y >= d.Y && local.Y <= d.Y + d.ScaledHeight)
                 return d;
         }
         return null;
+    }
+
+    /// <summary>Returns true if the point is over one of the selected device's corner grips.</summary>
+    private bool IsOverHandle(LightDevice device, Point screen)
+    {
+        var local = ToDeviceSpace(device, screen);
+
+        // Grip radius is in screen pixels, so convert it to world units.
+        double reach = (HandleRadius + 4) / Math.Max(_scale, 1e-6);
+
+        foreach (var corner in new[]
+                 {
+                     new Point(device.X, device.Y),
+                     new Point(device.X + device.ScaledWidth, device.Y),
+                     new Point(device.X + device.ScaledWidth, device.Y + device.ScaledHeight),
+                     new Point(device.X, device.Y + device.ScaledHeight),
+                 })
+        {
+            if (Math.Abs(local.X - corner.X) <= reach && Math.Abs(local.Y - corner.Y) <= reach)
+                return true;
+        }
+        return false;
     }
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
@@ -299,13 +392,24 @@ public sealed class LayoutCanvas : FrameworkElement
         base.OnMouseLeftButtonDown(e);
         Focus();
 
-        var hit = HitTest(e.GetPosition(this));
+        var position = e.GetPosition(this);
+
+        // A grip on the already-selected device takes priority: its corners can sit over
+        // a neighbouring device, and grabbing that instead would be maddening.
+        if (_selected is not null && IsOverHandle(_selected, position))
+        {
+            StartResize(_selected, position);
+            InvalidateVisual();
+            return;
+        }
+
+        var hit = HitTest(position);
         SelectedDevice = hit;
 
         if (hit is not null)
         {
             _dragging = hit;
-            _dragStartScreen = e.GetPosition(this);
+            _dragStartScreen = position;
             _dragStartX = hit.X;
             _dragStartY = hit.Y;
             CaptureMouse();
@@ -325,6 +429,18 @@ public sealed class LayoutCanvas : FrameworkElement
             _panStart = pos;
             InvalidateVisual();
             return;
+        }
+
+        if (_resizing is not null)
+        {
+            ApplyResize(pos);
+            return;
+        }
+
+        // Show a grip cursor when hovering a corner of the selected device.
+        if (_dragging is null && _selected is not null)
+        {
+            Cursor = IsOverHandle(_selected, pos) ? Cursors.SizeNWSE : null;
         }
 
         if (_dragging is null) return;
@@ -349,9 +465,66 @@ public sealed class LayoutCanvas : FrameworkElement
         InvalidateVisual();
     }
 
+    /// <summary>
+    /// Begins a corner resize. The centre is pinned, so the device grows and shrinks in
+    /// place rather than crawling away from the cursor.
+    /// </summary>
+    private void StartResize(LightDevice device, Point screen)
+    {
+        _resizing = device;
+        _resizeStartScale = device.Scale;
+        _resizeCentre = new Point(device.X + device.ScaledWidth / 2.0,
+                                  device.Y + device.ScaledHeight / 2.0);
+
+        var world = ScreenToWorld(screen);
+        _resizeStartDistance = Math.Max(1e-3, Distance(world, _resizeCentre));
+
+        Cursor = Cursors.SizeNWSE;
+        CaptureMouse();
+    }
+
+    private void ApplyResize(Point screen)
+    {
+        if (_resizing is null) return;
+
+        var world = ScreenToWorld(screen);
+        double distance = Distance(world, _resizeCentre);
+
+        // Scale is always uniform. Dragging a corner is a request to make the device
+        // bigger or smaller, not to distort it - a keyboard stretched to twice its width
+        // would put its lights where no lights are.
+        double scale = _resizeStartScale * (distance / _resizeStartDistance);
+        _resizing.Scale = Math.Clamp(scale, 0.15, 6.0);
+
+        // Keep the centre where it was.
+        _resizing.X = _resizeCentre.X - _resizing.ScaledWidth / 2.0;
+        _resizing.Y = _resizeCentre.Y - _resizing.ScaledHeight / 2.0;
+
+        DeviceMoved?.Invoke(_resizing);
+        InvalidateVisual();
+    }
+
+    private static double Distance(Point a, Point b)
+    {
+        double dx = a.X - b.X, dy = a.Y - b.Y;
+        return Math.Sqrt(dx * dx + dy * dy);
+    }
+
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonUp(e);
+
+        if (_resizing is not null)
+        {
+            var resized = _resizing;
+            _resizing = null;
+            Cursor = null;
+            ReleaseMouseCapture();
+            DeviceMoved?.Invoke(resized);
+            InvalidateVisual();
+            return;
+        }
+
         if (_dragging is not null)
         {
             var moved = _dragging;
@@ -422,6 +595,50 @@ public sealed class LayoutCanvas : FrameworkElement
             Cursor = null;
         }
         _dragging = null;
+        _resizing = null;
+    }
+
+    /// <summary>Turns the selected device by <paramref name="degrees"/>.</summary>
+    public void RotateSelected(double degrees)
+    {
+        if (_selected is null) return;
+
+        _selected.Rotation = ((_selected.Rotation + degrees) % 360 + 360) % 360;
+        DeviceMoved?.Invoke(_selected);
+        InvalidateVisual();
+    }
+
+    /// <summary>Scales the selected device by a factor, keeping its centre in place.</summary>
+    public void ScaleSelected(double factor)
+    {
+        if (_selected is null) return;
+
+        double centreX = _selected.X + _selected.ScaledWidth / 2.0;
+        double centreY = _selected.Y + _selected.ScaledHeight / 2.0;
+
+        _selected.Scale = Math.Clamp(_selected.Scale * factor, 0.15, 6.0);
+        _selected.X = centreX - _selected.ScaledWidth / 2.0;
+        _selected.Y = centreY - _selected.ScaledHeight / 2.0;
+
+        DeviceMoved?.Invoke(_selected);
+        InvalidateVisual();
+    }
+
+    /// <summary>Puts the selected device back to unrotated, original size.</summary>
+    public void ResetSelectedTransform()
+    {
+        if (_selected is null) return;
+
+        double centreX = _selected.X + _selected.ScaledWidth / 2.0;
+        double centreY = _selected.Y + _selected.ScaledHeight / 2.0;
+
+        _selected.Rotation = 0;
+        _selected.Scale = 1.0;
+        _selected.X = centreX - _selected.ScaledWidth / 2.0;
+        _selected.Y = centreY - _selected.ScaledHeight / 2.0;
+
+        DeviceMoved?.Invoke(_selected);
+        InvalidateVisual();
     }
 
     protected override void OnMouseWheel(MouseWheelEventArgs e)

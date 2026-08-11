@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using SickRGB.Audio;
 using SickRGB.Capture;
 using SickRGB.Controls;
 using SickRGB.Core;
@@ -27,6 +28,15 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         SmoothingSlider.Value = _services.Settings.Smoothing;
         FloorSlider.Value = _services.Settings.AmbientFloor;
         ChkCanvasMap.IsChecked = _services.Settings.AmbientUseCanvasMapping;
+
+        BuildAudioChoices();
+        ChkMicrophone.IsChecked = _services.Settings.AudioUseMicrophone;
+        GainSlider.Value = _services.Settings.AudioGain;
+        AudioSmoothSlider.Value = _services.Settings.AudioSmoothing;
+        GateSlider.Value = _services.Settings.AudioNoiseGate;
+        MinHzSlider.Value = _services.Settings.AudioMinHz;
+        MaxHzSlider.Value = _services.Settings.AudioMaxHz;
+        AudioFloorSlider.Value = _services.Settings.AudioFloor;
         _loading = false;
 
         UpdateValueLabels();
@@ -106,6 +116,8 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         IntensitySection.Visibility = effect.UsesIntensity ? Visibility.Visible : Visibility.Collapsed;
         ColorSection.Visibility = effect.ColorLabels.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         AmbientSection.Visibility = effect.UsesScreen ? Visibility.Visible : Visibility.Collapsed;
+        AudioSection.Visibility = effect.UsesAudio ? Visibility.Visible : Visibility.Collapsed;
+        if (effect.UsesAudio) UpdateAudioStatus();
 
         BuildColorPickers(effect, id);
         UpdateValueLabels();
@@ -224,6 +236,128 @@ public partial class EffectsPage : UserControl, IRefreshablePage
     {
         if (_loading) return;
         _services.Settings.AmbientUseCanvasMapping = ChkCanvasMap.IsChecked == true;
+        _services.Settings.Save();
+    }
+
+    // ================================================================== audio
+
+    private static readonly (AudioColourMode Mode, string Label)[] ColourModes =
+    {
+        (AudioColourMode.Spectrum, "Frequency (bass to treble)"),
+        (AudioColourMode.Gradient, "Your two colours, by level"),
+        (AudioColourMode.Single,   "One colour, brightness only"),
+        (AudioColourMode.Meter,    "Green to red, like a level meter"),
+    };
+
+    private static readonly (AudioLayout Layout, string Label)[] Layouts =
+    {
+        (AudioLayout.BassInCentre, "In the middle, spreading out"),
+        (AudioLayout.BassAtEdges,  "At both edges, treble centre"),
+        (AudioLayout.LeftToRight,  "On the left"),
+        (AudioLayout.RightToLeft,  "On the right"),
+    };
+
+    private void BuildAudioChoices()
+    {
+        CmbAudioColour.Items.Clear();
+        foreach (var (_, label) in ColourModes) CmbAudioColour.Items.Add(label);
+        CmbAudioColour.SelectedIndex = Math.Max(0,
+            Array.FindIndex(ColourModes, c => c.Mode == _services.Settings.AudioColourMode));
+
+        CmbAudioLayout.Items.Clear();
+        foreach (var (_, label) in Layouts) CmbAudioLayout.Items.Add(label);
+        CmbAudioLayout.SelectedIndex = Math.Max(0,
+            Array.FindIndex(Layouts, l => l.Layout == _services.Settings.AudioLayout));
+    }
+
+    private void UpdateAudioStatus()
+    {
+        string? error = _services.Engine.AudioError;
+
+        if (!string.IsNullOrEmpty(error))
+        {
+            AudioStatus.Text = $"Could not listen to audio: {error}";
+            AudioStatus.Foreground = (Brush)FindResource("WarningBrush");
+            return;
+        }
+
+        AudioStatus.Text = _services.Settings.AudioUseMicrophone
+            ? "Listening to your microphone."
+            : "Listening to whatever your PC is playing. Start some music to see it move.";
+        AudioStatus.Foreground = (Brush)FindResource("TextSecondaryBrush");
+    }
+
+    private void Microphone_Click(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _services.Settings.AudioUseMicrophone = ChkMicrophone.IsChecked == true;
+        _services.Settings.Save();
+        UpdateAudioStatus();
+    }
+
+    private void AudioColour_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading) return;
+        int i = CmbAudioColour.SelectedIndex;
+        if (i < 0 || i >= ColourModes.Length) return;
+        _services.Settings.AudioColourMode = ColourModes[i].Mode;
+        _services.Settings.Save();
+    }
+
+    private void AudioLayout_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading) return;
+        int i = CmbAudioLayout.SelectedIndex;
+        if (i < 0 || i >= Layouts.Length) return;
+        _services.Settings.AudioLayout = Layouts[i].Layout;
+        _services.Settings.Save();
+    }
+
+    private void Gain_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        GainValue.Text = $"{e.NewValue:0.0}x";
+        if (_loading) return;
+        _services.Settings.AudioGain = e.NewValue;
+        _services.Settings.Save();
+    }
+
+    private void AudioSmooth_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        AudioSmoothValue.Text = $"{e.NewValue * 100:0}%";
+        if (_loading) return;
+        _services.Settings.AudioSmoothing = e.NewValue;
+        _services.Settings.Save();
+    }
+
+    private void Gate_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        GateValue.Text = $"{e.NewValue * 100:0}%";
+        if (_loading) return;
+        _services.Settings.AudioNoiseGate = e.NewValue;
+        _services.Settings.Save();
+    }
+
+    private void MinHz_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        MinHzValue.Text = $"{e.NewValue:0} Hz";
+        if (_loading) return;
+        _services.Settings.AudioMinHz = e.NewValue;
+        _services.Settings.Save();
+    }
+
+    private void MaxHz_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        MaxHzValue.Text = $"{e.NewValue / 1000.0:0.0} kHz";
+        if (_loading) return;
+        _services.Settings.AudioMaxHz = e.NewValue;
+        _services.Settings.Save();
+    }
+
+    private void AudioFloor_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        AudioFloorValue.Text = $"{e.NewValue * 100:0}%";
+        if (_loading) return;
+        _services.Settings.AudioFloor = e.NewValue;
         _services.Settings.Save();
     }
 }

@@ -50,8 +50,16 @@ Settings live in `%AppData%\SickRGB\settings.json`.
 
 ### Adding your other devices
 
-Out of the box, SickRGB drives supported keyboards and mice directly. For memory,
-motherboards, graphics cards, coolers and case fans it bridges to
+Out of the box, SickRGB drives supported keyboards and mice directly:
+
+- **Turtle Beach / ROCCAT Magma**, verified on hardware.
+- **Keyboards that speak VIA**, which includes the QMK-based Sharkoon SKILLER boards.
+  These are found by asking each keyboard whether it understands the protocol, rather than
+  by matching USB IDs, because several of these vendors share an OEM ID with unrelated
+  hardware. VIA exposes one colour for the whole board rather than per-key, so such a
+  keyboard appears as a single light.
+
+For memory, motherboards, graphics cards, coolers and case fans it bridges to
 [OpenRGB](https://openrgb.org/).
 
 Click **Add more lights** in the sidebar. It downloads OpenRGB, starts it out of the way, and
@@ -75,7 +83,15 @@ installed without you clicking it.
 | **Reactive Wave** | ● | A broad wave rolling outward |
 | **Reactive Flash** | ● | The nearest lights flare, then fade |
 | **Activity Heat** | ● | Warms where you work, cools when you stop |
+| **Music Visualiser** | | Whatever your PC is playing, spread across your lights by frequency |
 | **Screen Ambient** | | Each light matches its part of your screen |
+
+**Music Visualiser** listens to your speakers (or a microphone) and spreads the spectrum
+across your layout: bass, mids and treble each get their own part. Colours can follow
+frequency, blend between two of your own, or read like a level meter, and you can put the
+bass in the middle, at the edges, or on either side. Sensitivity, smoothing, noise gate and
+the frequency range are all adjustable. Audio is only listened to while the effect is
+running, and is never recorded or sent anywhere.
 
 Set one effect for everything, or give any device its own from the **Devices** page. Either
 way they share the same canvas, so the result stays spatially coherent.

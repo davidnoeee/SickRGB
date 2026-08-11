@@ -32,6 +32,7 @@ public sealed class DeviceRegistry : IDisposable
     public DeviceRegistry()
     {
         _providers.Add(new MagmaProvider());
+        _providers.Add(new ViaKeyboardProvider());
         _providers.Add(new LogitechProvider());
         _providers.Add(new OpenRgbProvider());
     }
@@ -100,6 +101,8 @@ public sealed class DeviceRegistry : IDisposable
             {
                 device.X = saved.X;
                 device.Y = saved.Y;
+                device.Rotation = saved.Rotation;
+                device.Scale = saved.Scale <= 0 ? 1.0 : saved.Scale;
                 device.Enabled = saved.Enabled;
                 device.Reversed = saved.Reversed;
                 if (saved.Role is { } role) device.Role = role;
@@ -200,6 +203,11 @@ public sealed class DeviceRegistry : IDisposable
                 maxY = Math.Max(maxY, z.WorldY);
             }
         }
+
+        // A single light, or several stacked in one spot, gives a zero-size box. Pad it so
+        // normalised coordinates stay finite instead of collapsing to a divide by zero.
+        if (any && (maxX - minX) < 1) { minX -= 50; maxX += 50; }
+        if (any && (maxY - minY) < 1) { minY -= 50; maxY += 50; }
 
         if (!any) { minX = minY = 0; maxX = maxY = 1; }
 

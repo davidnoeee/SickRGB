@@ -34,6 +34,24 @@
                             ToolTip="Reset every device to a default desk position."/>
                 </StackPanel>
 
+                <!-- Only meaningful with a device selected. -->
+                <StackPanel Grid.Column="1" x:Name="TransformBar" Orientation="Horizontal"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <Button Style="{StaticResource StandardButton}" Content="&#xE7AD;" FontFamily="{StaticResource IconFont}"
+                            Padding="10,7" Click="RotateLeft_Click" ToolTip="Rotate 15 degrees anticlockwise"/>
+                    <Button Style="{StaticResource StandardButton}" Content="&#xE7A7;" FontFamily="{StaticResource IconFont}"
+                            Padding="10,7" Margin="6,0,0,0" Click="RotateRight_Click" ToolTip="Rotate 15 degrees clockwise"/>
+
+                    <Button Style="{StaticResource StandardButton}" Content="&#xE738;" FontFamily="{StaticResource IconFont}"
+                            Padding="10,7" Margin="14,0,0,0" Click="ScaleDown_Click" ToolTip="Make smaller"/>
+                    <Button Style="{StaticResource StandardButton}" Content="&#xE710;" FontFamily="{StaticResource IconFont}"
+                            Padding="10,7" Margin="6,0,0,0" Click="ScaleUp_Click" ToolTip="Make larger"/>
+
+                    <Button Style="{StaticResource SubtleButton}" Content="Reset" Margin="14,0,0,0"
+                            Click="ResetTransform_Click" ToolTip="Back to upright and original size"/>
+                </StackPanel>
+
                 <CheckBox Grid.Column="2" x:Name="ChkSnap" Style="{StaticResource ToggleSwitch}"
                           Content="Snap to grid" IsChecked="True" Click="Snap_Click"
                           ToolTip="Hold Alt while dragging to bypass snapping."/>
@@ -55,7 +73,7 @@
 
             <TextBlock Grid.Column="0" x:Name="HintText" Style="{StaticResource CaptionText}"
                        VerticalAlignment="Center"
-                       Text="Drag a device to move it  ·  scroll to zoom  ·  middle-drag or right-drag to pan  ·  hold Alt to bypass snapping"/>
+                       Text="Drag to move  ·  drag a corner to resize  ·  scroll to zoom  ·  middle-drag to pan  ·  hold Alt to bypass snapping"/>
 
             <TextBlock Grid.Column="1" x:Name="SelectionText" Style="{StaticResource CaptionText}"
                        VerticalAlignment="Center" Margin="20,0,0,0"/>

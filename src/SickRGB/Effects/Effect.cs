@@ -94,6 +94,15 @@ public sealed class EffectContext
     public double AmbientFloor;
     public bool AmbientUseCanvasMapping = true;
 
+    // ---- audio visualiser only ----
+    public SickRGB.Audio.SpectrumAnalyzer? Spectrum;
+    public SickRGB.Audio.AudioColourMode AudioColourMode;
+    public SickRGB.Audio.AudioLayout AudioLayout;
+    public double AudioFloor;
+
+    /// <summary>False when nothing has been heard yet, so the UI can say so.</summary>
+    public bool AudioHasSignal;
+
     /// <summary>Maps the 0..1 speed slider onto a useful multiplier.</summary>
     public double SpeedFactor => 0.25 + Speed * 2.75;
 
@@ -118,6 +127,10 @@ public abstract class Effect
 
     public virtual bool IsReactive => false;
     public virtual bool UsesScreen => false;
+
+    /// <summary>True if this effect listens to audio.</summary>
+    public virtual bool UsesAudio => false;
+
     public virtual bool UsesSpeed => true;
     public virtual bool UsesIntensity => false;
     public virtual string IntensityLabel => "Intensity";

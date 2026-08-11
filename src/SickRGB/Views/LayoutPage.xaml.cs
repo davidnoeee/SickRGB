@@ -46,6 +46,8 @@ public partial class LayoutPage : UserControl, IRefreshablePage
         var settings = _services.Settings.DeviceFor(device.Key);
         settings.X = device.X;
         settings.Y = device.Y;
+        settings.Rotation = device.Rotation;
+        settings.Scale = device.Scale;
         settings.HasPlacement = true;
 
         // Recompute immediately so effects follow the device as it is dragged.
@@ -70,10 +72,22 @@ public partial class LayoutPage : UserControl, IRefreshablePage
     private void UpdateSelectionText()
     {
         var d = Canvas.SelectedDevice;
+
+        // The transform controls only make sense with something selected.
+        TransformBar.Visibility = d is null ? Visibility.Collapsed : Visibility.Visible;
+
         SelectionText.Text = d is null
             ? ""
-            : $"{d.Name}   x {d.X:0}  y {d.Y:0}   ({d.Width:0} x {d.Height:0} mm)";
+            : $"{d.Name}   x {d.X:0}  y {d.Y:0}   {d.ScaledWidth:0} x {d.ScaledHeight:0} mm"
+              + (Math.Abs(d.Rotation) > 0.01 ? $"   {d.Rotation:0}°" : "")
+              + (Math.Abs(d.Scale - 1.0) > 0.01 ? $"   {d.Scale * 100:0}%" : "");
     }
+
+    private void RotateLeft_Click(object sender, RoutedEventArgs e) => Canvas.RotateSelected(-15);
+    private void RotateRight_Click(object sender, RoutedEventArgs e) => Canvas.RotateSelected(15);
+    private void ScaleUp_Click(object sender, RoutedEventArgs e) => Canvas.ScaleSelected(1.1);
+    private void ScaleDown_Click(object sender, RoutedEventArgs e) => Canvas.ScaleSelected(1 / 1.1);
+    private void ResetTransform_Click(object sender, RoutedEventArgs e) => Canvas.ResetSelectedTransform();
 
     private void OnFrameRendered()
     {

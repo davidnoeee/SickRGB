@@ -114,6 +114,90 @@
                                Text="Keeps your lights on during dark scenes instead of letting them go black. At 100% they never dim below full brightness."/>
                 </StackPanel>
 
+                <!-- audio visualiser -->
+                <StackPanel x:Name="AudioSection" Margin="0,26,0,0" Visibility="Collapsed">
+                    <TextBlock Text="Sound" Style="{StaticResource SectionHeaderText}"/>
+
+                    <Border Style="{StaticResource SubtleCard}" Padding="14,12" MaxWidth="520"
+                            HorizontalAlignment="Left" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock x:Name="AudioStatus" Style="{StaticResource BodyText}"
+                                       Text="Listening to whatever your PC is playing."/>
+                            <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0"
+                                       Text="Audio is only listened to while this effect is running, and is never recorded or sent anywhere."/>
+                        </StackPanel>
+                    </Border>
+
+                    <CheckBox x:Name="ChkMicrophone" Style="{StaticResource ToggleSwitch}"
+                              Content="Listen to a microphone instead" Click="Microphone_Click"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="52,4,0,0" MaxWidth="520"
+                               HorizontalAlignment="Left"
+                               Text="Off, it follows your speakers or headphones, so anything you can hear drives the lights."/>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+                        <StackPanel Width="250" Margin="0,0,20,0">
+                            <TextBlock Text="Colours follow" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
+                            <ComboBox x:Name="CmbAudioColour" SelectionChanged="AudioColour_Changed"/>
+                        </StackPanel>
+                        <StackPanel Width="250">
+                            <TextBlock Text="Bass sits" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
+                            <ComboBox x:Name="CmbAudioLayout" SelectionChanged="AudioLayout_Changed"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Grid Margin="0,20,0,0">
+                        <TextBlock Text="Sensitivity" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="GainValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="GainSlider" Style="{StaticResource FluentSlider}" Minimum="0.5" Maximum="8"
+                            MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="Gain_Changed"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               Text="Turn this up for quiet music, down if everything is pinned at full brightness."/>
+
+                    <Grid Margin="0,16,0,0">
+                        <TextBlock Text="Smoothing" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="AudioSmoothValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="AudioSmoothSlider" Style="{StaticResource FluentSlider}" Maximum="0.95"
+                            MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="AudioSmooth_Changed"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               Text="How gently the lights fall back after a beat. Low is snappy, high is flowing."/>
+
+                    <Grid Margin="0,16,0,0">
+                        <TextBlock Text="Noise gate" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="GateValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="GateSlider" Style="{StaticResource FluentSlider}" Maximum="0.3"
+                            MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="Gate_Changed"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               Text="Ignores very quiet sound, so the lights sit still during silence instead of flickering."/>
+
+                    <Grid Margin="0,16,0,0">
+                        <TextBlock Text="Lowest note" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="MinHzValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="MinHzSlider" Style="{StaticResource FluentSlider}" Minimum="20" Maximum="500"
+                            MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="MinHz_Changed"/>
+
+                    <Grid Margin="0,16,0,0">
+                        <TextBlock Text="Highest note" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="MaxHzValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="MaxHzSlider" Style="{StaticResource FluentSlider}" Minimum="2000" Maximum="16000"
+                            MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="MaxHz_Changed"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               Text="The range spread across your lights. Narrowing it gives the part you care about more room."/>
+
+                    <Grid Margin="0,16,0,0">
+                        <TextBlock Text="Minimum glow" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="AudioFloorValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="AudioFloorSlider" Style="{StaticResource FluentSlider}" Maximum="0.6"
+                            MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="AudioFloor_Changed"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               Text="Keeps a little light showing between beats instead of dropping to black."/>
+                </StackPanel>
+
             </StackPanel>
         </ScrollViewer>
     </Grid>

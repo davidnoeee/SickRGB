@@ -116,6 +116,13 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         IntensitySection.Visibility = effect.UsesIntensity ? Visibility.Visible : Visibility.Collapsed;
         AmbientSection.Visibility = effect.UsesScreen ? Visibility.Visible : Visibility.Collapsed;
         AudioSection.Visibility = effect.UsesAudio ? Visibility.Visible : Visibility.Collapsed;
+
+        // Both audio effects share sensitivity, smoothing and the gate, but frequency
+        // layout is meaningless for a directional readout.
+        var visualiserOnly = effect is AudioVisualizerEffect ? Visibility.Visible : Visibility.Collapsed;
+        VisualiserModeRow.Visibility = visualiserOnly;
+        VisualiserRangeRow.Visibility = visualiserOnly;
+
         if (effect.UsesAudio) UpdateAudioStatus();
 
         _currentEffect = effect;

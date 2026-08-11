@@ -249,6 +249,10 @@ public sealed class AppSettings
 
             // Five stops from bass to treble, in the same spirit as Colour Wave.
             "audio" => new[] { "#FF2D3C", "#FF9114", "#3CE66E", "#00C8FF", "#DC46FF" },
+
+            // Faint, moderate, loud. A restrained ramp on purpose: position is the message
+            // here, and a louder palette would compete with it.
+            "direction" => new[] { "#2A5FA8", "#3ECFC1", "#FFD24A" },
             _ => new[] { "#FF5A1F", "#0066FF", "#00FF88", "#FFAA00", "#AA00FF" },
         };
 

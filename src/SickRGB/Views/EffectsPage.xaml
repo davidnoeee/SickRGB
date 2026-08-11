@@ -117,19 +117,22 @@
                                HorizontalAlignment="Left"
                                Text="Off, it follows your speakers or headphones, so anything you can hear drives the lights."/>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
-                        <StackPanel Width="250" Margin="0,0,20,0">
-                            <TextBlock Text="Colours" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
-                            <ComboBox x:Name="CmbAudioColour" SelectionChanged="AudioColour_Changed"/>
+                    <!-- Frequency layout only means something for the spectrum visualiser. -->
+                    <StackPanel x:Name="VisualiserModeRow">
+                        <StackPanel Orientation="Horizontal" Margin="0,18,0,0">
+                            <StackPanel Width="250" Margin="0,0,20,0">
+                                <TextBlock Text="Colours" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
+                                <ComboBox x:Name="CmbAudioColour" SelectionChanged="AudioColour_Changed"/>
+                            </StackPanel>
+                            <StackPanel Width="250">
+                                <TextBlock Text="Within each device, bass sits" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
+                                <ComboBox x:Name="CmbAudioLayout" SelectionChanged="AudioLayout_Changed"/>
+                            </StackPanel>
                         </StackPanel>
-                        <StackPanel Width="250">
-                            <TextBlock Text="Within each device, bass sits" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
-                            <ComboBox x:Name="CmbAudioLayout" SelectionChanged="AudioLayout_Changed"/>
-                        </StackPanel>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" MaxWidth="520"
+                                   HorizontalAlignment="Left"
+                                   Text="Only affects devices with enough lights to show a spectrum."/>
                     </StackPanel>
-                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" MaxWidth="520"
-                               HorizontalAlignment="Left"
-                               Text="Only affects devices with enough lights to show a spectrum."/>
 
                     <Grid Margin="0,20,0,0">
                         <TextBlock Text="Sensitivity" Style="{StaticResource SectionHeaderText}"/>
@@ -158,21 +161,23 @@
                     <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
                                Text="Ignores very quiet sound, so the lights sit still during silence instead of flickering."/>
 
-                    <Grid Margin="0,16,0,0">
-                        <TextBlock Text="Lowest note" Style="{StaticResource SectionHeaderText}"/>
-                        <TextBlock x:Name="MinHzValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
-                    </Grid>
-                    <Slider x:Name="MinHzSlider" Style="{StaticResource FluentSlider}" Minimum="20" Maximum="500"
-                            MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="MinHz_Changed"/>
+                    <StackPanel x:Name="VisualiserRangeRow">
+                        <Grid Margin="0,16,0,0">
+                            <TextBlock Text="Lowest note" Style="{StaticResource SectionHeaderText}"/>
+                            <TextBlock x:Name="MinHzValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Slider x:Name="MinHzSlider" Style="{StaticResource FluentSlider}" Minimum="20" Maximum="500"
+                                MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="MinHz_Changed"/>
 
-                    <Grid Margin="0,16,0,0">
-                        <TextBlock Text="Highest note" Style="{StaticResource SectionHeaderText}"/>
-                        <TextBlock x:Name="MaxHzValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
-                    </Grid>
-                    <Slider x:Name="MaxHzSlider" Style="{StaticResource FluentSlider}" Minimum="2000" Maximum="16000"
-                            MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="MaxHz_Changed"/>
-                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
-                               Text="The range spread across your lights. Narrowing it gives the part you care about more room."/>
+                        <Grid Margin="0,16,0,0">
+                            <TextBlock Text="Highest note" Style="{StaticResource SectionHeaderText}"/>
+                            <TextBlock x:Name="MaxHzValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Slider x:Name="MaxHzSlider" Style="{StaticResource FluentSlider}" Minimum="2000" Maximum="16000"
+                                MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="MaxHz_Changed"/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                   Text="The range spread across your lights. Narrowing it gives the part you care about more room."/>
+                    </StackPanel>
 
                     <Grid Margin="0,16,0,0">
                         <TextBlock Text="Minimum glow" Style="{StaticResource SectionHeaderText}"/>

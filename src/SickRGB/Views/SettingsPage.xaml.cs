@@ -149,6 +149,12 @@ public partial class SettingsPage : UserControl, IRefreshablePage
         _services.Settings.Save();
     }
 
+    private void Diagnostics_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new DiagnosticsWindow { Owner = Window.GetWindow(this) };
+        window.Show();
+    }
+
     private void OpenConfig_Click(object sender, RoutedEventArgs e)
     {
         try

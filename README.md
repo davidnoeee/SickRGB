@@ -84,17 +84,42 @@ installed without you clicking it.
 | **Reactive Flash** | ● | The nearest lights flare, then fade |
 | **Activity Heat** | ● | Warms where you work, cools when you stop |
 | **Music Visualiser** | | Whatever your PC is playing, spread across your lights by frequency |
+| **Directional Sound** | | Lights up the side a sound came from |
 | **Screen Ambient** | | Each light matches its part of your screen |
 
-**Music Visualiser** listens to your speakers (or a microphone) and spreads the spectrum
-across your layout: bass, mids and treble each get their own part. Colours can follow
-frequency, blend between two of your own, or read like a level meter, and you can put the
-bass in the middle, at the edges, or on either side. Sensitivity, smoothing, noise gate and
-the frequency range are all adjustable. Audio is only listened to while the effect is
-running, and is never recorded or sent anywhere.
+**Music Visualiser** listens to your speakers (or a microphone) and gives every device its
+own display: one with plenty of lights shows a spectrum across itself, one with only a few
+pulses with the volume. Each device chooses which part of the music it shows, so a keyboard
+can carry the whole range while a mouse takes only the bass.
+
+**Directional Sound** shows *where* a sound came from rather than what it was. Games pan
+positional audio between the channels, so comparing them reads out direction, and this puts
+that on your lights: a bright spot on the left of the keyboard means something happened on
+your left. Colour carries loudness, on a deliberately restrained ramp so position stays the
+message.
+
+It exists as an accessibility feature. If placing sound by ear is difficult, through
+single-sided hearing loss or otherwise, this gives the same information by eye. It needs a
+device with at least four lights to point with; smaller ones just show how loud it was.
+
+Audio is only listened to while one of these effects is running, and is never recorded or
+sent anywhere.
 
 Set one effect for everything, or give any device its own from the **Devices** page. Either
 way they share the same canvas, so the result stays spatially coherent.
+
+---
+
+## An unsupported device?
+
+**Settings → Debug → Open device report** collects what a keyboard or mouse says about
+itself: which interface carries its lighting, the shape of its reports, and what it answers
+when asked. That is what someone needs to add support for it, and it is how the Magma driver
+here was written.
+
+Building the report only reads from your devices. It can also listen to what a device sends
+while you use it, which is asked for separately and explained in that window, because on a
+keyboard that can include what you type.
 
 ---
 

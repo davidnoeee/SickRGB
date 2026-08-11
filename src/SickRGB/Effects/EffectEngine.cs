@@ -47,6 +47,7 @@ public sealed class EffectEngine : IDisposable
     // down as soon as one is not, so nothing listens in the background needlessly.
     private SickRGB.Audio.AudioCapture? _audio;
     private SickRGB.Audio.SpectrumAnalyzer? _spectrum;
+    private SickRGB.Audio.DirectionAnalyzer? _direction;
     private readonly SickRGB.Audio.AudioOptions _audioOptions = new();
     private Thread? _thread;
     private volatile bool _running;
@@ -372,6 +373,7 @@ public sealed class EffectEngine : IDisposable
             _ctx.AmbientFloor = _settings.AmbientFloor;
             _ctx.AmbientUseCanvasMapping = _settings.AmbientUseCanvasMapping;
             _ctx.Spectrum = _spectrum;
+            _ctx.Direction = _direction;
             _ctx.AudioColourMode = _settings.AudioColourMode;
             _ctx.AudioLayout = _settings.AudioLayout;
             _ctx.AudioFloor = _settings.AudioFloor;
@@ -471,6 +473,7 @@ public sealed class EffectEngine : IDisposable
                 _audio.Dispose();
                 _audio = null;
                 _spectrum = null;
+                _direction = null;
             }
             return;
         }
@@ -481,6 +484,7 @@ public sealed class EffectEngine : IDisposable
             _audio.Dispose();
             _audio = null;
             _spectrum = null;
+            _direction = null;
         }
 
         if (_audio is null)
@@ -488,6 +492,7 @@ public sealed class EffectEngine : IDisposable
             _audio = new SickRGB.Audio.AudioCapture { UseMicrophone = _settings.AudioUseMicrophone };
             _audio.Start();
             _spectrum = new SickRGB.Audio.SpectrumAnalyzer();
+            _direction = new SickRGB.Audio.DirectionAnalyzer();
         }
 
         _audioOptions.Gain = _settings.AudioGain;
@@ -497,6 +502,7 @@ public sealed class EffectEngine : IDisposable
         _audioOptions.MaxHz = _settings.AudioMaxHz;
 
         _spectrum?.Update(_audio, _audioOptions, delta);
+        _direction?.Update(_audio, _audioOptions, delta);
     }
 
     /// <summary>Whatever went wrong starting audio capture, for the UI to show.</summary>
@@ -532,5 +538,6 @@ public sealed class EffectEngine : IDisposable
         _audio?.Dispose();
         _audio = null;
         _spectrum = null;
+        _direction = null;
     }
 }

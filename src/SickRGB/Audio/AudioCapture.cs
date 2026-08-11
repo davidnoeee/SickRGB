@@ -89,10 +89,16 @@ public sealed class AudioCapture : IDisposable
     // ---------------------------------------------------------------- state
 
     /// <summary>
-    /// Ring of recent mono samples. Sized generously so a stalled render thread cannot
-    /// cause the analyser to read a torn window.
+    /// Rings of recent samples, left and right kept apart.
+    ///
+    /// Stereo is preserved rather than mixed down because the difference between the two
+    /// channels is the only thing that carries direction, and averaging destroys it. The
+    /// spectrum work averages them back together on read, which costs nothing.
+    ///
+    /// Sized generously so a stalled render thread cannot cause a torn read.
     /// </summary>
-    private readonly float[] _ring = new float[16384];
+    private readonly float[] _ringLeft = new float[16384];
+    private readonly float[] _ringRight = new float[16384];
     private int _writeIndex;
     private readonly object _ringLock = new();
 
@@ -133,18 +139,46 @@ public sealed class AudioCapture : IDisposable
         HasSignal = false;
     }
 
-    /// <summary>Copies the most recent <paramref name="count"/> samples, oldest first.</summary>
+    /// <summary>
+    /// Copies the most recent <paramref name="count"/> samples as mono, oldest first.
+    /// </summary>
     public bool ReadLatest(float[] destination, int count)
     {
-        if (count > _ring.Length) return false;
+        if (count > _ringLeft.Length) return false;
 
         lock (_ringLock)
         {
             int start = _writeIndex - count;
-            if (start < 0) start += _ring.Length;
+            if (start < 0) start += _ringLeft.Length;
 
             for (int i = 0; i < count; i++)
-                destination[i] = _ring[(start + i) % _ring.Length];
+            {
+                int index = (start + i) % _ringLeft.Length;
+                destination[i] = (_ringLeft[index] + _ringRight[index]) * 0.5f;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Copies the most recent samples with the channels kept apart, oldest first.
+    /// Used for working out which side a sound came from.
+    /// </summary>
+    public bool ReadLatestStereo(float[] left, float[] right, int count)
+    {
+        if (count > _ringLeft.Length || left.Length < count || right.Length < count) return false;
+
+        lock (_ringLock)
+        {
+            int start = _writeIndex - count;
+            if (start < 0) start += _ringLeft.Length;
+
+            for (int i = 0; i < count; i++)
+            {
+                int index = (start + i) % _ringLeft.Length;
+                left[i] = _ringLeft[index];
+                right[i] = _ringRight[index];
+            }
         }
         return true;
     }
@@ -252,7 +286,12 @@ public sealed class AudioCapture : IDisposable
         }
     }
 
-    /// <summary>Mixes the captured frames down to mono and appends them to the ring.</summary>
+    /// <summary>
+    /// Appends captured frames to the rings, keeping left and right separate.
+    ///
+    /// Surround layouts put the front pair first, so channel 0 and 1 are taken as left
+    /// and right; a mono source is written to both sides.
+    /// </summary>
     private unsafe void AppendFrames(IntPtr data, int frames, int channels, int bytesPerSample,
                                      bool isFloat, bool silent)
     {
@@ -262,27 +301,34 @@ public sealed class AudioCapture : IDisposable
 
             for (int f = 0; f < frames; f++)
             {
-                float sum = 0;
+                float left = 0, right = 0;
 
                 if (!silent)
                 {
-                    for (int c = 0; c < channels; c++)
-                    {
-                        byte* sample = src + (f * channels + c) * bytesPerSample;
-
-                        if (isFloat && bytesPerSample == 4) sum += *(float*)sample;
-                        else if (bytesPerSample == 2) sum += *(short*)sample / 32768f;
-                        else if (bytesPerSample == 4) sum += *(int*)sample / 2147483648f;
-                    }
-                    sum /= channels;
+                    left = ReadSample(src, (f * channels) * bytesPerSample, bytesPerSample, isFloat);
+                    right = channels > 1
+                        ? ReadSample(src, (f * channels + 1) * bytesPerSample, bytesPerSample, isFloat)
+                        : left;
                 }
 
-                _ring[_writeIndex] = sum;
-                _writeIndex = (_writeIndex + 1) % _ring.Length;
+                _ringLeft[_writeIndex] = left;
+                _ringRight[_writeIndex] = right;
+                _writeIndex = (_writeIndex + 1) % _ringLeft.Length;
 
-                if (!silent && Math.Abs(sum) > 0.0005f) HasSignal = true;
+                if (!silent && (Math.Abs(left) > 0.0005f || Math.Abs(right) > 0.0005f))
+                    HasSignal = true;
             }
         }
+    }
+
+    private static unsafe float ReadSample(byte* src, int offset, int bytesPerSample, bool isFloat)
+    {
+        byte* sample = src + offset;
+
+        if (isFloat && bytesPerSample == 4) return *(float*)sample;
+        if (bytesPerSample == 2) return *(short*)sample / 32768f;
+        if (bytesPerSample == 4) return *(int*)sample / 2147483648f;
+        return 0;
     }
 
     public void Dispose() => Stop();

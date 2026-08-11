@@ -111,6 +111,23 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ================= debug ================= -->
+                <TextBlock Text="Debug" Style="{StaticResource SectionHeaderText}" Margin="0,26,0,10"/>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Device report" Style="{StaticResource StrongText}"/>
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,6,0,0"
+                                   Text="Collects what a keyboard or mouse says about itself: which interface carries its lighting, the shape of its reports, and what it answers when asked. If a device is not supported yet, this is what someone needs to add it."/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,8,0,0"
+                                   Text="Building the report only reads from your devices. It can also listen to what a device sends while you use it, which is explained and asked for separately in that window."/>
+
+                        <Button x:Name="BtnDiagnostics" Content="Open device report"
+                                Style="{StaticResource StandardButton}" HorizontalAlignment="Left"
+                                Margin="0,14,0,0" Click="Diagnostics_Click"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- ================= about ================= -->
                 <TextBlock Text="About" Style="{StaticResource SectionHeaderText}" Margin="0,26,0,10"/>
 

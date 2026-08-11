@@ -65,6 +65,8 @@ internal static class HidNative
     [DllImport("hid.dll", SetLastError = true)] public static extern bool HidD_GetFeature(SafeFileHandleEx h, byte[] buf, int len);
     [DllImport("hid.dll", SetLastError = true)] public static extern bool HidD_SetOutputReport(SafeFileHandleEx h, byte[] buf, int len);
     [DllImport("hid.dll", CharSet = CharSet.Unicode)] public static extern bool HidD_GetProductString(SafeFileHandleEx h, byte[] buf, int len);
+    [DllImport("hid.dll", CharSet = CharSet.Unicode)] public static extern bool HidD_GetManufacturerString(SafeFileHandleEx h, byte[] buf, int len);
+    [DllImport("hid.dll", CharSet = CharSet.Unicode)] public static extern bool HidD_GetSerialNumberString(SafeFileHandleEx h, byte[] buf, int len);
 
     [DllImport("setupapi.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr SetupDiGetClassDevs(ref Guid g, IntPtr enumerator, IntPtr hwnd, int flags);
@@ -122,7 +124,26 @@ internal static class HidNative
         int InputReportLength,
         int OutputReportLength,
         int FeatureReportLength,
-        string Product);
+        string Product,
+        string Manufacturer = "",
+        string Serial = "");
+
+    private delegate bool HidStringGetter(SafeFileHandleEx handle, byte[] buffer, int length);
+
+    /// <summary>Reads one of the device's descriptor strings. Absent strings come back empty.</summary>
+    private static string ReadString(SafeFileHandleEx handle, HidStringGetter getter)
+    {
+        try
+        {
+            var buffer = new byte[512];
+            if (!getter(handle, buffer, buffer.Length)) return "";
+
+            string text = System.Text.Encoding.Unicode.GetString(buffer);
+            int nul = text.IndexOf('\0');
+            return (nul >= 0 ? text[..nul] : text).Trim();
+        }
+        catch { return ""; }
+    }
 
     public static List<HidCollection> Enumerate()
     {
@@ -180,17 +201,13 @@ internal static class HidNative
                         finally { HidD_FreePreparsedData(pp); }
                     }
 
-                    string product = "";
-                    var nameBuf = new byte[512];
-                    if (HidD_GetProductString(probe, nameBuf, nameBuf.Length))
-                    {
-                        product = System.Text.Encoding.Unicode.GetString(nameBuf);
-                        int nul = product.IndexOf('\0');
-                        if (nul >= 0) product = product[..nul];
-                    }
+                    string product = ReadString(probe, HidD_GetProductString);
+                    string manufacturer = ReadString(probe, HidD_GetManufacturerString);
+                    string serial = ReadString(probe, HidD_GetSerialNumberString);
 
                     results.Add(new HidCollection(path, attr.VendorID, attr.ProductID, attr.VersionNumber,
-                                                  usagePage, usage, inLen, outLen, featLen, product));
+                                                  usagePage, usage, inLen, outLen, featLen,
+                                                  product, manufacturer, serial));
                 }
                 finally { Marshal.FreeHGlobal(detail); }
             }

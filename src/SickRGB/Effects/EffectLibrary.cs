@@ -418,6 +418,92 @@ public sealed class AudioVisualizerEffect : Effect
     };
 }
 
+/// <summary>
+/// Shows which side a sound came from, as an accessibility aid.
+///
+/// Built for anyone who cannot place sound by ear, whether through single-sided hearing
+/// loss or just playing without headphones. In a game with positional audio, footsteps and
+/// gunfire get panned between the channels, and this puts that reading on the lights: a
+/// bright spot on the left of the keyboard means something happened on your left.
+/// </summary>
+public sealed class DirectionalSoundEffect : Effect
+{
+    /// <summary>
+    /// Below this, a device cannot show a direction. Two or three lights can only say
+    /// "left" or "right", which is worse than saying nothing, so those devices show the
+    /// loudness instead and leave the direction to something that can draw it.
+    /// </summary>
+    public const int MinLightsForDirection = 4;
+
+    public override string Id => "direction";
+    public override string Name => "Directional Sound";
+    public override string Description =>
+        "Lights up the side a sound came from, so you can see where it is instead of hearing it. "
+      + "Useful in games with positional audio, and as an accessibility aid if placing sound by ear "
+      + "is difficult. Needs a device with at least four lights to show a direction; smaller ones "
+      + "just show how loud it was.";
+
+    public override string[] ColorLabels => new[] { "Faint", "Moderate", "Loud" };
+
+    public override bool UsesAudio => true;
+    public override bool UsesSpeed => false;
+    public override bool UsesIntensity => true;
+    public override string IntensityLabel => "Spot width";
+
+    public override void Render(EffectContext ctx, ReadOnlySpan<LightPoint> points, Span<RgbF> output)
+    {
+        var direction = ctx.Direction;
+        if (direction is null)
+        {
+            for (int i = 0; i < output.Length; i++) output[i] = RgbF.Black;
+            return;
+        }
+
+        double level = direction.Level;
+        double floor = Math.Clamp(ctx.AudioFloor, 0, 1);
+
+        // Colour carries loudness, so a glance says how big the thing was as well as where.
+        // Kept to a narrow ramp rather than a rainbow: the position is the message, and a
+        // busy palette would fight it.
+        var colour = LoudnessColour(ctx.Colors, level);
+
+        // Position across the device, 0 left to 1 right.
+        double target = (Math.Clamp(direction.Direction, -1, 1) + 1.0) * 0.5;
+
+        // A vague reading spreads out rather than pointing somewhere it cannot justify.
+        double width = 0.08 + (1.0 - ctx.Intensity) * 0.35;
+        width += (1.0 - direction.Confidence) * 0.5;
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            var point = points[i];
+
+            if (point.DeviceLightCount < MinLightsForDirection)
+            {
+                // Too few lights to point with, so this device just reports the level.
+                output[i] = colour * (floor + (1.0 - floor) * level);
+                continue;
+            }
+
+            double offset = (point.DeviceX - target) / width;
+            double spot = Math.Exp(-offset * offset);
+
+            double lit = floor + (1.0 - floor) * level * spot;
+            output[i] = colour * lit;
+        }
+    }
+
+    /// <summary>Blends the three loudness stops.</summary>
+    private static RgbF LoudnessColour(Rgb24[] colours, double level)
+    {
+        // Only the first three stops are used; the palette is shared with other effects.
+        double t = Math.Clamp(level, 0, 1) * 2.0;
+        int low = (int)Math.Floor(t);
+        int high = Math.Min(low + 1, 2);
+        return RgbF.From(colours[low]).Lerp(RgbF.From(colours[high]), t - low);
+    }
+}
+
 // =====================================================================================
 //  Screen ambient
 // =====================================================================================
@@ -485,6 +571,7 @@ public static class EffectLibrary
         new ReactiveFlashEffect(),
         new TypingHeatEffect(),
         new AudioVisualizerEffect(),
+        new DirectionalSoundEffect(),
         new AmbientEffect(),
     };
 

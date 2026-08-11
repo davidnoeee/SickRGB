@@ -118,6 +118,7 @@ public sealed class EffectContext
 
     // ---- audio visualiser only ----
     public SickRGB.Audio.SpectrumAnalyzer? Spectrum;
+    public SickRGB.Audio.DirectionAnalyzer? Direction;
     public SickRGB.Audio.AudioColourMode AudioColourMode;
     public SickRGB.Audio.AudioLayout AudioLayout;
     public double AudioFloor;

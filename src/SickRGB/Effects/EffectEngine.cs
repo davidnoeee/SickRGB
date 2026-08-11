@@ -32,8 +32,15 @@ public sealed class EffectEngine : IDisposable
         public required List<GroupMember> Members { get; init; }
         public LightPoint[] Points = Array.Empty<LightPoint>();
         public RgbF[] Scratch = Array.Empty<RgbF>();
+        public RgbF[] OverlayScratch = Array.Empty<RgbF>();
         public Rgb24[] Output = Array.Empty<Rgb24>();
     }
+
+    /// <summary>
+    /// The directional readout, when it is layered over another effect rather than
+    /// replacing it. Its own instance, so switching the main effect never disturbs it.
+    /// </summary>
+    private readonly DirectionalSoundEffect _overlay = new();
 
     private readonly AppSettings _settings;
     private readonly DeviceRegistry _registry;
@@ -215,6 +222,7 @@ public sealed class EffectEngine : IDisposable
             int total = group.Members.Sum(m => m.Device.ZoneCount);
             group.Points = new LightPoint[total];
             group.Scratch = new RgbF[total];
+            group.OverlayScratch = new RgbF[total];
             group.Output = new Rgb24[total];
         }
 
@@ -349,11 +357,16 @@ public sealed class EffectEngine : IDisposable
             if (target is not null) _sampler.Capture(target, _settings.Smoothing);
         }
 
-        UpdateAudio(_groups.Any(g => g.Effect.UsesAudio), delta);
+        // The overlay needs audio just as much as an audio effect does, so it counts as
+        // a reason to keep listening.
+        bool overlayWanted = _settings.DirectionOverlay && _settings.DirectionOverlayOpacity > 0.001;
+        UpdateAudio(overlayWanted || _groups.Any(g => g.Effect.UsesAudio), delta);
 
         double brightness = Math.Clamp(_settings.Brightness, 0, 1);
         bool deviceLost = false;
         bool anyFailureThisFrame = false;
+
+        bool overlayActive = overlayWanted && _direction is not null;
 
         foreach (var group in _groups)
         {
@@ -381,6 +394,10 @@ public sealed class EffectEngine : IDisposable
 
             Array.Clear(group.Scratch);
             group.Effect.Render(_ctx, group.Points, group.Scratch);
+
+            // Pointless on top of the directional effect itself.
+            if (overlayActive && group.Effect is not DirectionalSoundEffect)
+                ApplyDirectionOverlay(group);
 
             for (int i = 0; i < group.Scratch.Length; i++)
                 group.Output[i] = group.Scratch[i].ToRgb24(brightness);
@@ -459,6 +476,50 @@ public sealed class EffectEngine : IDisposable
     }
 
     /// <summary>
+    /// Draws the directional readout over whatever the group just rendered.
+    ///
+    /// The overlay's own brightness is the mask, so silence changes nothing at all and a
+    /// loud sound off to one side takes over only the lights it points at. Blending by a
+    /// flat opacity instead would wash out the whole layout the moment the overlay was on.
+    /// </summary>
+    private void ApplyDirectionOverlay(RenderGroup group)
+    {
+        double opacity = Math.Clamp(_settings.DirectionOverlayOpacity, 0, 1);
+
+        // The overlay uses the directional effect's own colours and spot width, so it looks
+        // the same whether it is the effect or sitting on top of one.
+        var preset = _settings.PresetFor(_overlay.Id);
+
+        var savedColors = _ctx.Colors;
+        var savedIntensity = _ctx.Intensity;
+        var savedFloor = _ctx.AudioFloor;
+
+        _ctx.Colors = AppSettings.PaletteOf(preset);
+        _ctx.Intensity = preset.Intensity;
+
+        // No idle floor: a floor would leave every light permanently tinted, which is
+        // exactly what an overlay must not do.
+        _ctx.AudioFloor = 0;
+
+        Array.Clear(group.OverlayScratch);
+        _overlay.Render(_ctx, group.Points, group.OverlayScratch);
+
+        _ctx.Colors = savedColors;
+        _ctx.Intensity = savedIntensity;
+        _ctx.AudioFloor = savedFloor;
+
+        for (int i = 0; i < group.Scratch.Length; i++)
+        {
+            var over = group.OverlayScratch[i];
+
+            double mask = Math.Clamp(Math.Max(over.R, Math.Max(over.G, over.B)), 0, 1) * opacity;
+            if (mask <= 0.001) continue;
+
+            group.Scratch[i] = group.Scratch[i].Lerp(over, mask);
+        }
+    }
+
+    /// <summary>
     /// Starts or stops listening, and refreshes the spectrum for this frame.
     ///
     /// Capture only exists while an effect actually wants it. Switching to any other
@@ -478,8 +539,11 @@ public sealed class EffectEngine : IDisposable
             return;
         }
 
+        int wantedProcess = ResolveAudioProcess();
+
         // Re-open if the input choice changed.
-        if (_audio is not null && _audio.UseMicrophone != _settings.AudioUseMicrophone)
+        if (_audio is not null
+         && (_audio.UseMicrophone != _settings.AudioUseMicrophone || _audio.TargetProcessId != wantedProcess))
         {
             _audio.Dispose();
             _audio = null;
@@ -489,7 +553,11 @@ public sealed class EffectEngine : IDisposable
 
         if (_audio is null)
         {
-            _audio = new SickRGB.Audio.AudioCapture { UseMicrophone = _settings.AudioUseMicrophone };
+            _audio = new SickRGB.Audio.AudioCapture
+            {
+                UseMicrophone = _settings.AudioUseMicrophone,
+                TargetProcessId = wantedProcess,
+            };
             _audio.Start();
             _spectrum = new SickRGB.Audio.SpectrumAnalyzer();
             _direction = new SickRGB.Audio.DirectionAnalyzer();
@@ -500,13 +568,55 @@ public sealed class EffectEngine : IDisposable
         _audioOptions.NoiseGate = _settings.AudioNoiseGate;
         _audioOptions.MinHz = _settings.AudioMinHz;
         _audioOptions.MaxHz = _settings.AudioMaxHz;
+        _audioOptions.BalanceCompensation = _settings.AudioBalanceCompensation;
+        _audioOptions.BalanceTrim = _settings.AudioBalanceTrim;
 
         _spectrum?.Update(_audio, _audioOptions, delta);
         _direction?.Update(_audio, _audioOptions, delta);
     }
 
+    private int _resolvedAudioProcess;
+    private DateTime _audioProcessCheckedAt = DateTime.MinValue;
+
+    /// <summary>
+    /// Which process to listen to this frame, or zero for everything.
+    ///
+    /// Looked up by name rather than trusting the stored ID, and only every few seconds:
+    /// enumerating audio sessions is far too slow to do at frame rate, and the answer only
+    /// changes when an application starts or stops.
+    /// </summary>
+    private int ResolveAudioProcess()
+    {
+        if (string.IsNullOrWhiteSpace(_settings.AudioTargetProcessName)) return 0;
+
+        var now = DateTime.UtcNow;
+        if ((now - _audioProcessCheckedAt).TotalSeconds < 3) return _resolvedAudioProcess;
+
+        _audioProcessCheckedAt = now;
+        _resolvedAudioProcess = SickRGB.Audio.AudioSessions.Resolve(
+            _settings.AudioTargetProcessId ?? 0, _settings.AudioTargetProcessName);
+
+        return _resolvedAudioProcess;
+    }
+
     /// <summary>Whatever went wrong starting audio capture, for the UI to show.</summary>
     public string? AudioError => _audio?.Error;
+
+    /// <summary>True when a specific app was chosen but is not currently running.</summary>
+    public bool AudioTargetMissing =>
+        !string.IsNullOrWhiteSpace(_settings.AudioTargetProcessName) && _resolvedAudioProcess == 0;
+
+    /// <summary>How lopsided the output balance has been measured to be, -1 left through +1 right.</summary>
+    public double MeasuredAudioImbalance => _direction?.MeasuredImbalance ?? 0;
+
+    /// <summary>The same, in decibels, right minus left.</summary>
+    public double MeasuredAudioImbalanceDb => _direction?.MeasuredImbalanceDb ?? 0;
+
+    /// <summary>False while the measurement is still gathering its first few seconds.</summary>
+    public bool AudioBalanceSettled => _direction?.BalanceSettled ?? false;
+
+    /// <summary>Starts the balance measurement over, after a volume change.</summary>
+    public void ResetAudioBalance() => _direction?.ResetBalance();
 
     private List<CaptureTarget>? _cachedTargets;
     private DateTime _targetsRefreshedAt = DateTime.MinValue;

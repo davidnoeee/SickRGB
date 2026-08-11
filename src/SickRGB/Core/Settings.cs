@@ -92,6 +92,35 @@ public sealed class AppSettings
     /// <summary>Keeps a little light showing in the quiet parts instead of going black.</summary>
     public double AudioFloor { get; set; }
 
+    // ---- audio source ----
+    /// <summary>
+    /// Listen to one application instead of everything. Null means the whole output mix.
+    /// </summary>
+    public int? AudioTargetProcessId { get; set; }
+
+    /// <summary>Remembered so the same app can be re-selected after it restarts.</summary>
+    public string AudioTargetProcessName { get; set; } = "";
+
+    // ---- directional sound ----
+    /// <summary>
+    /// Cancels a lopsided output balance before working out direction.
+    ///
+    /// Matters if you have turned one side up and the other down, which anyone with
+    /// one-sided hearing loss is likely to have done. Without this, a permanently louder
+    /// right channel reads as "everything is on your right", which is precisely the
+    /// information the effect exists to provide.
+    /// </summary>
+    public bool AudioBalanceCompensation { get; set; } = true;
+
+    /// <summary>Manual balance nudge, -1 favours the left through to +1 favours the right.</summary>
+    public double AudioBalanceTrim { get; set; }
+
+    /// <summary>Show direction on top of whatever effect is already running.</summary>
+    public bool DirectionOverlay { get; set; }
+
+    /// <summary>How strongly the overlay covers the effect underneath, 0..1.</summary>
+    public double DirectionOverlayOpacity { get; set; } = 0.75;
+
     // ---- providers ----
     /// <summary>
     /// Addressable headers that have already been given an automatic strip length.

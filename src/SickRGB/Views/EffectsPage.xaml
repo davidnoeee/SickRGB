@@ -112,10 +112,57 @@
                                Foreground="{StaticResource WarningBrush}"/>
 
                     <CheckBox x:Name="ChkMicrophone" Style="{StaticResource ToggleSwitch}"
-                              Content="Listen to a microphone instead" Click="Microphone_Click"/>
+                              Content="Listen to a microphone instead"
+                              Checked="Microphone_Click" Unchecked="Microphone_Click"/>
                     <TextBlock Style="{StaticResource CaptionText}" Margin="52,4,0,0" MaxWidth="520"
                                HorizontalAlignment="Left"
                                Text="Off, it follows your speakers or headphones, so anything you can hear drives the lights."/>
+
+                    <!-- Which app to listen to. Pointless while a microphone is the source. -->
+                    <StackPanel x:Name="AudioSourceRow" Margin="0,18,0,0">
+                        <TextBlock Text="Take sound from" Style="{StaticResource SectionHeaderText}" Margin="0,0,0,6"/>
+                        <StackPanel Orientation="Horizontal">
+                            <ComboBox x:Name="CmbAudioSource" Width="380" SelectionChanged="AudioSource_Changed"/>
+                            <Button Content="Refresh" Margin="10,0,0,0" Style="{StaticResource StandardButton}"
+                                    Click="RefreshAudioSources_Click"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0" MaxWidth="520"
+                                   HorizontalAlignment="Left"
+                                   Text="Pick one app and everything else is ignored, so a notification or a song playing alongside your game cannot pull the lights around."/>
+                        <TextBlock x:Name="AudioSourceWarning" Style="{StaticResource CaptionText}" Margin="0,6,0,0"
+                                   MaxWidth="520" HorizontalAlignment="Left" Visibility="Collapsed"
+                                   Foreground="{StaticResource WarningBrush}"/>
+                    </StackPanel>
+
+                    <!--
+                        Shown wherever sound is being listened to, not only on the directional
+                        effect. A lopsided output is a property of the machine rather than of
+                        one effect, and it is worth being able to find it without hunting.
+                    -->
+                    <StackPanel x:Name="DirectionBalanceRow" Margin="0,20,0,0">
+                        <CheckBox x:Name="ChkBalance" Style="{StaticResource ToggleSwitch}"
+                                  Content="Even out left and right first"
+                                  Checked="Balance_Click" Unchecked="Balance_Click"/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="52,4,0,0" MaxWidth="520"
+                                   HorizontalAlignment="Left"
+                                   Text="If one side of your headphones is turned up far louder than the other, everything would read as coming from that side. This watches the long-run level of each channel and cancels the difference out, leaving only the moment-to-moment changes that actually carry direction."/>
+                        <StackPanel Orientation="Horizontal" Margin="52,8,0,0">
+                            <TextBlock x:Name="BalanceReadout" Style="{StaticResource CaptionText}"
+                                       MaxWidth="440" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                            <Button Content="Measure again" Margin="12,0,0,0" Style="{StaticResource StandardButton}"
+                                    VerticalAlignment="Center" Click="ResetBalance_Click"/>
+                        </StackPanel>
+
+                        <Grid Margin="0,16,0,0">
+                            <TextBlock Text="Manual nudge" Style="{StaticResource SectionHeaderText}"/>
+                            <TextBlock x:Name="BalanceTrimValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Slider x:Name="BalanceTrimSlider" Style="{StaticResource FluentSlider}"
+                                Minimum="-1" Maximum="1" MaxWidth="520" HorizontalAlignment="Left" Width="520"
+                                ValueChanged="BalanceTrim_Changed"/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                   Text="Push this if the reading still sits off to one side. It shifts the answer rather than turning a channel up, so 6 dB left moves the reading 6 dB left and nothing else changes."/>
+                    </StackPanel>
 
                     <!-- Frequency layout only means something for the spectrum visualiser. -->
                     <StackPanel x:Name="VisualiserModeRow">
@@ -187,6 +234,35 @@
                             MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="AudioFloor_Changed"/>
                     <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
                                Text="Keeps a little light showing between beats instead of dropping to black."/>
+                </StackPanel>
+
+                <!--
+                    The directional readout as a layer rather than a mode, so it can run
+                    alongside whatever effect you actually want to look at.
+                -->
+                <StackPanel x:Name="OverlaySection" Margin="0,26,0,0" Visibility="Collapsed">
+                    <TextBlock Text="Directional sound overlay" Style="{StaticResource SectionHeaderText}"/>
+
+                    <CheckBox x:Name="ChkDirectionOverlay" Style="{StaticResource ToggleSwitch}" Margin="0,10,0,0"
+                              Content="Show sound direction on top of this effect"
+                              Checked="DirectionOverlay_Click" Unchecked="DirectionOverlay_Click"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="52,4,0,0" MaxWidth="520"
+                               HorizontalAlignment="Left"
+                               Text="Lights up the side a sound came from, over whatever is already running. Silence changes nothing, so the effect below shows through until there is something to point at."/>
+
+                    <StackPanel x:Name="OverlayOpacityRow" Visibility="Collapsed">
+                        <Grid Margin="0,16,0,0">
+                            <TextBlock Text="Overlay strength" Style="{StaticResource SectionHeaderText}"/>
+                            <TextBlock x:Name="OverlayOpacityValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Slider x:Name="OverlayOpacitySlider" Style="{StaticResource FluentSlider}" Maximum="1"
+                                MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="OverlayOpacity_Changed"/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                   Text="How far it covers the effect underneath. Full replaces those lights outright while a sound is playing."/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="0,10,0,0" MaxWidth="520"
+                                   HorizontalAlignment="Left"
+                                   Text="Its colours and spot width are the ones saved under the Directional Sound effect. Switch to it to change them."/>
+                    </StackPanel>
                 </StackPanel>
 
                 <!--

@@ -37,13 +37,37 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         MinHzSlider.Value = _services.Settings.AudioMinHz;
         MaxHzSlider.Value = _services.Settings.AudioMaxHz;
         AudioFloorSlider.Value = _services.Settings.AudioFloor;
+        ChkBalance.IsChecked = _services.Settings.AudioBalanceCompensation;
+        BalanceTrimSlider.Value = _services.Settings.AudioBalanceTrim;
+        ChkDirectionOverlay.IsChecked = _services.Settings.DirectionOverlay;
+        OverlayOpacitySlider.Value = _services.Settings.DirectionOverlayOpacity;
         _loading = false;
 
         UpdateValueLabels();
         SelectEffect(_services.Settings.GlobalEffectId);
+
+        _balanceTicker.Tick += (_, _) =>
+        {
+            if (AudioSection.Visibility == Visibility.Visible) UpdateBalanceLabels();
+        };
     }
 
-    public void OnShown() => BuildMonitorList();
+    public void OnShown()
+    {
+        BuildMonitorList();
+        _balanceTicker.Start();
+    }
+
+    /// <summary>
+    /// Keeps the measured balance readout current.
+    ///
+    /// The measurement moves over tens of seconds by design, so a slow tick is plenty and
+    /// there is nothing to gain from tying it to the render loop.
+    /// </summary>
+    private readonly System.Windows.Threading.DispatcherTimer _balanceTicker = new()
+    {
+        Interval = TimeSpan.FromSeconds(1),
+    };
 
     // ================================================================== gallery
 
@@ -115,7 +139,18 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         SpeedSection.Visibility = effect.UsesSpeed ? Visibility.Visible : Visibility.Collapsed;
         IntensitySection.Visibility = effect.UsesIntensity ? Visibility.Visible : Visibility.Collapsed;
         AmbientSection.Visibility = effect.UsesScreen ? Visibility.Visible : Visibility.Collapsed;
-        AudioSection.Visibility = effect.UsesAudio ? Visibility.Visible : Visibility.Collapsed;
+
+        // The overlay is offered on anything except the directional effect itself, where
+        // it would be layering the effect over a copy of itself.
+        bool isDirection = effect is DirectionalSoundEffect;
+        OverlaySection.Visibility = isDirection ? Visibility.Collapsed : Visibility.Visible;
+        OverlayOpacityRow.Visibility =
+            !isDirection && _services.Settings.DirectionOverlay ? Visibility.Visible : Visibility.Collapsed;
+
+        // The sound settings also apply to the overlay, so they stay available whenever
+        // anything is listening rather than only when the effect itself is.
+        bool overlayOn = !isDirection && _services.Settings.DirectionOverlay;
+        AudioSection.Visibility = effect.UsesAudio || overlayOn ? Visibility.Visible : Visibility.Collapsed;
 
         // Both audio effects share sensitivity, smoothing and the gate, but frequency
         // layout is meaningless for a directional readout.
@@ -123,7 +158,11 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         VisualiserModeRow.Visibility = visualiserOnly;
         VisualiserRangeRow.Visibility = visualiserOnly;
 
-        if (effect.UsesAudio) UpdateAudioStatus();
+        if (effect.UsesAudio || overlayOn)
+        {
+            UpdateAudioStatus();
+            RefreshAudioSources();
+        }
 
         _currentEffect = effect;
         RefreshColourSection();
@@ -227,6 +266,8 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         SaturationValue.Text = $"{SaturationSlider.Value:0.00}x";
         SmoothingValue.Text = $"{SmoothingSlider.Value * 100:0}%";
         FloorValue.Text = $"{FloorSlider.Value * 100:0}%";
+        OverlayOpacityValue.Text = $"{OverlayOpacitySlider.Value * 100:0}%";
+        UpdateBalanceLabels();
     }
 
     private void Speed_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -338,7 +379,175 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         if (_loading) return;
         _services.Settings.AudioUseMicrophone = ChkMicrophone.IsChecked == true;
         _services.Settings.Save();
+
+        // Choosing one app applies to loopback only, so the picker goes away for a mic.
+        AudioSourceRow.Visibility = _services.Settings.AudioUseMicrophone
+            ? Visibility.Collapsed : Visibility.Visible;
+
         UpdateAudioStatus();
+    }
+
+    // ================================================================== audio source
+
+    /// <summary>Backs the picker, index-aligned with it. The first entry is "everything".</summary>
+    private readonly List<AudioSession?> _audioSources = new();
+
+    /// <summary>
+    /// Refills the app picker from whatever currently holds an audio session.
+    ///
+    /// Rebuilt each time the panel is shown rather than kept live: applications come and
+    /// go constantly, and a list that reshuffled itself under the pointer would be worse
+    /// than one that is a few seconds stale.
+    /// </summary>
+    private void RefreshAudioSources()
+    {
+        bool wasLoading = _loading;
+        _loading = true;
+
+        try
+        {
+            _audioSources.Clear();
+            CmbAudioSource.Items.Clear();
+
+            _audioSources.Add(null);
+            CmbAudioSource.Items.Add("Everything playing on this PC");
+
+            string saved = _services.Settings.AudioTargetProcessName;
+            int selected = 0;
+            bool savedFound = false;
+
+            foreach (var session in AudioSessions.List())
+            {
+                _audioSources.Add(session);
+                CmbAudioSource.Items.Add(session.Active
+                    ? $"{session.DisplayName}  (playing)"
+                    : session.DisplayName);
+
+                if (!savedFound && string.Equals(session.ProcessName, saved, StringComparison.OrdinalIgnoreCase))
+                {
+                    selected = CmbAudioSource.Items.Count - 1;
+                    savedFound = true;
+                }
+            }
+
+            // A chosen app that is not running stays chosen: it is almost always a game
+            // that is simply closed, and silently reverting to everything would be a
+            // change nobody asked for.
+            if (!savedFound && !string.IsNullOrWhiteSpace(saved))
+            {
+                _audioSources.Add(new AudioSession { ProcessName = saved, DisplayName = saved });
+                CmbAudioSource.Items.Add($"{saved}  (not running)");
+                selected = CmbAudioSource.Items.Count - 1;
+            }
+
+            CmbAudioSource.SelectedIndex = selected;
+
+            AudioSourceWarning.Visibility = _services.Engine.AudioTargetMissing
+                ? Visibility.Visible : Visibility.Collapsed;
+            AudioSourceWarning.Text =
+                $"{saved} is not playing anything right now, so there is nothing to show. It will be picked up as soon as it is.";
+
+            AudioSourceRow.Visibility = _services.Settings.AudioUseMicrophone
+                ? Visibility.Collapsed : Visibility.Visible;
+        }
+        finally
+        {
+            _loading = wasLoading;
+        }
+    }
+
+    private void RefreshAudioSources_Click(object sender, RoutedEventArgs e) => RefreshAudioSources();
+
+    private void AudioSource_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading) return;
+
+        int i = CmbAudioSource.SelectedIndex;
+        if (i < 0 || i >= _audioSources.Count) return;
+
+        var session = _audioSources[i];
+        _services.Settings.AudioTargetProcessId = session?.ProcessId;
+        _services.Settings.AudioTargetProcessName = session?.ProcessName ?? "";
+        _services.Settings.Save();
+
+        AudioSourceWarning.Visibility = Visibility.Collapsed;
+    }
+
+    // ================================================================== balance
+
+    private void Balance_Click(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _services.Settings.AudioBalanceCompensation = ChkBalance.IsChecked == true;
+        _services.Settings.Save();
+        UpdateValueLabels();
+    }
+
+    private void BalanceTrim_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateBalanceLabels();
+        if (_loading) return;
+        _services.Settings.AudioBalanceTrim = e.NewValue;
+        _services.Settings.Save();
+    }
+
+    private void UpdateBalanceLabels()
+    {
+        // Decibels throughout, because that is the unit anything else that measures a
+        // channel balance reports, and because the differences involved are far too large
+        // for a percentage to describe usefully.
+        double trimDb = BalanceTrimSlider.Value * DirectionAnalyzer.TrimRangeDb / 2.0;
+
+        BalanceTrimValue.Text = Math.Abs(trimDb) < 0.5
+            ? "Centred"
+            : trimDb > 0 ? $"{trimDb:0} dB towards the right" : $"{-trimDb:0} dB towards the left";
+
+        if (!_services.Engine.AudioBalanceSettled)
+        {
+            BalanceReadout.Text = "Listening. Play something for a few seconds and the measurement will appear here.";
+            return;
+        }
+
+        double db = _services.Engine.MeasuredAudioImbalanceDb;
+        string side = db > 0 ? "right" : "left";
+        string tail = ChkBalance.IsChecked == true ? ", and correcting for it" : "";
+
+        BalanceReadout.Text = Math.Abs(db) < 1.0
+            ? "Measuring your two channels as about even."
+            : $"Measuring your {side} channel about {Math.Abs(db):0} dB louder than the other{tail}.";
+    }
+
+    private void ResetBalance_Click(object sender, RoutedEventArgs e)
+    {
+        _services.Engine.ResetAudioBalance();
+        UpdateBalanceLabels();
+    }
+
+    // ================================================================== overlay
+
+    private void DirectionOverlay_Click(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+
+        bool on = ChkDirectionOverlay.IsChecked == true;
+        _services.Settings.DirectionOverlay = on;
+        _services.Settings.Save();
+
+        OverlayOpacityRow.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+
+        // Turning it on brings the sound settings into play for an effect that had none.
+        bool usesAudio = _currentEffect?.UsesAudio == true;
+        AudioSection.Visibility = usesAudio || on ? Visibility.Visible : Visibility.Collapsed;
+
+        if (on) RefreshAudioSources();
+    }
+
+    private void OverlayOpacity_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        OverlayOpacityValue.Text = $"{e.NewValue * 100:0}%";
+        if (_loading) return;
+        _services.Settings.DirectionOverlayOpacity = e.NewValue;
+        _services.Settings.Save();
     }
 
     private void AudioColour_Changed(object sender, SelectionChangedEventArgs e)

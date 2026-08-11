@@ -88,6 +88,12 @@ public sealed class AudioOptions
 
     /// <summary>Highest frequency shown. Most music has little of interest above ~12 kHz.</summary>
     public double MaxHz = 12000;
+
+    /// <summary>Cancel a lopsided output balance before reading direction from it.</summary>
+    public bool BalanceCompensation = true;
+
+    /// <summary>Manual balance nudge, -1 favours the left through to +1 favours the right.</summary>
+    public double BalanceTrim;
 }
 
 /// <summary>

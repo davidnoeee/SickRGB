@@ -143,6 +143,18 @@ The codebase aims to read like one person wrote it.
 
 ---
 
+## Licensing of contributions
+
+SickRGB is released under [PolyForm Noncommercial 1.0.0](LICENSE): free for any
+noncommercial purpose, not for selling. By opening a pull request you agree your
+contribution is offered under that same licence.
+
+Because of the noncommercial restriction this is not open source by the OSI definition,
+even though the source is public. That is worth knowing before you spend an evening on a
+driver.
+
+---
+
 ## Reporting a bug
 
 Include your Windows version, which devices are connected, and whether OpenRGB is running

@@ -177,4 +177,16 @@ identical.
 
 ## Licence
 
-See [LICENSE](LICENSE).
+[PolyForm Noncommercial 1.0.0](LICENSE).
+
+Free for any noncommercial purpose: personal use, hobby projects, learning, and by
+charities, schools, research and government bodies. Selling it, or using it as part of
+something you sell, is not permitted.
+
+You may copy, change and share it within those limits. If you pass it on, the licence
+requires you to keep this notice with it:
+
+> Required Notice: Copyright (c) 2026 David Noé (https://github.com/davidnoeee/SickRGB)
+
+Worth being clear: a noncommercial restriction means this is **not** open source by the
+OSI definition, even though the source is public and contributions are welcome.

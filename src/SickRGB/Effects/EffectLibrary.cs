@@ -391,18 +391,11 @@ public sealed class AudioVisualizerEffect : Effect
             // glow underneath the music instead of a hard cutoff.
             double lit = floor + (1.0 - floor) * level;
 
-            output[i] = ctx.AudioColourMode switch
-            {
-                // Red at the bass end through to violet at the top, like Colour Wave.
-                AudioColourMode.Spectrum => RgbF.FromHsv(frequency * 0.8, 1.0, lit),
-
-                AudioColourMode.Palette => PaletteColour(ctx.Colors, frequency) * lit,
-
-                AudioColourMode.Single => RgbF.From(ctx.Colors[0]) * lit,
-
-                // Green through amber to red, the way a level meter reads.
-                _ => RgbF.FromHsv((1.0 - level) * 0.33, 1.0, lit),
-            };
+            // Colour always comes from the five stops, so what is on screen is always what
+            // is being used. The mode only decides what those stops are laid out along:
+            // frequency for a spectrum, loudness for a level meter.
+            double index = ctx.AudioColourMode == AudioColourMode.Meter ? level : frequency;
+            output[i] = PaletteColour(ctx.Colors, index) * lit;
         }
     }
 

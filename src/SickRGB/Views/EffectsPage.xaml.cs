@@ -126,23 +126,28 @@ public partial class EffectsPage : UserControl, IRefreshablePage
     private Effect? _currentEffect;
 
     /// <summary>
-    /// Which colour swatches to show.
-    ///
-    /// The visualiser is the one effect where this depends on another setting: a rainbow
-    /// or a level meter picks its own colours, so showing five empty swatches beside them
-    /// would just be clutter.
+    /// Swatch labels. The visualiser's stops are always shown, but what they are laid out
+    /// along depends on the mode, so they are named for it.
     /// </summary>
     private string[] ColourLabelsFor(Effect effect)
     {
         if (effect is not AudioVisualizerEffect) return effect.ColorLabels;
 
-        return _services.Settings.AudioColourMode switch
-        {
-            AudioColourMode.Palette => effect.ColorLabels,
-            AudioColourMode.Single => new[] { "Colour" },
-            _ => Array.Empty<string>(),
-        };
+        return _services.Settings.AudioColourMode == AudioColourMode.Meter
+            ? new[] { "Silent", "Quiet", "Medium", "Loud", "Peak" }
+            : effect.ColorLabels;
     }
+
+    /// <summary>The colours a preset mode fills the stops with.</summary>
+    private static string[]? PresetColoursFor(AudioColourMode mode, string currentFirst) => mode switch
+    {
+        AudioColourMode.Spectrum => new[] { "#FF2D3C", "#FF9114", "#3CE66E", "#00C8FF", "#DC46FF" },
+        AudioColourMode.Meter => new[] { "#1FBF5A", "#6CD432", "#FFD400", "#FF8A14", "#FF2D2D" },
+        AudioColourMode.Single => new[] { currentFirst, currentFirst, currentFirst, currentFirst, currentFirst },
+
+        // "My own colours" is the one mode that leaves what is there alone.
+        _ => null,
+    };
 
     private void RefreshColourSection()
     {
@@ -164,6 +169,7 @@ public partial class EffectsPage : UserControl, IRefreshablePage
             var initial = Rgb24.FromHex(i < preset.Colors.Length ? preset.Colors[i] : "#000000");
 
             var picker = new ColorPickerButton(labels[i], initial);
+            bool isAudio = effect is AudioVisualizerEffect;
             picker.ColorChanged += c =>
             {
                 if (slot < preset.Colors.Length)
@@ -171,6 +177,8 @@ public partial class EffectsPage : UserControl, IRefreshablePage
                     preset.Colors[slot] = c.ToHex();
                     _services.Settings.Save();
                 }
+
+                if (isAudio) TakeOwnershipOfColours();
             };
             ColorPanel.Children.Add(picker);
         }
@@ -300,21 +308,22 @@ public partial class EffectsPage : UserControl, IRefreshablePage
             Array.FindIndex(Layouts, l => l.Layout == _services.Settings.AudioLayout));
     }
 
+    /// <summary>
+    /// Only speaks up when something is wrong. When it is working there is nothing worth
+    /// saying: the lights are the feedback.
+    /// </summary>
     private void UpdateAudioStatus()
     {
         string? error = _services.Engine.AudioError;
 
-        if (!string.IsNullOrEmpty(error))
+        if (string.IsNullOrEmpty(error))
         {
-            AudioStatus.Text = $"Could not listen to audio: {error}";
-            AudioStatus.Foreground = (Brush)FindResource("WarningBrush");
+            AudioStatus.Visibility = Visibility.Collapsed;
             return;
         }
 
-        AudioStatus.Text = _services.Settings.AudioUseMicrophone
-            ? "Listening to your microphone."
-            : "Listening to whatever your PC is playing. Start some music to see it move.";
-        AudioStatus.Foreground = (Brush)FindResource("TextSecondaryBrush");
+        AudioStatus.Text = $"Could not listen to audio: {error}";
+        AudioStatus.Visibility = Visibility.Visible;
     }
 
     private void Microphone_Click(object sender, RoutedEventArgs e)
@@ -330,11 +339,36 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         if (_loading) return;
         int i = CmbAudioColour.SelectedIndex;
         if (i < 0 || i >= ColourModes.Length) return;
-        _services.Settings.AudioColourMode = ColourModes[i].Mode;
+        var mode = ColourModes[i].Mode;
+        _services.Settings.AudioColourMode = mode;
+
+        // Picking a preset rewrites the five stops, so the swatches always show the
+        // colours actually in use rather than something left over from before.
+        var preset = _services.Settings.PresetFor("audio");
+        string first = preset.Colors.Length > 0 ? preset.Colors[0] : "#FF5A1F";
+        if (PresetColoursFor(mode, first) is { } colours) preset.Colors = colours;
+
+        _services.Settings.Save();
+        RefreshColourSection();
+    }
+
+    /// <summary>
+    /// Editing a swatch means the colours are now yours, so the mode follows along.
+    ///
+    /// The pickers are deliberately not rebuilt here: doing so would tear down the very
+    /// control being used mid-edit. The stop names catch up next time the page is opened.
+    /// </summary>
+    private void TakeOwnershipOfColours()
+    {
+        if (_services.Settings.AudioColourMode == AudioColourMode.Palette) return;
+
+        _services.Settings.AudioColourMode = AudioColourMode.Palette;
         _services.Settings.Save();
 
-        // Which swatches make sense depends on the mode just chosen.
-        RefreshColourSection();
+        // Move the dropdown without letting it overwrite the colour just chosen.
+        _loading = true;
+        CmbAudioColour.SelectedIndex = Array.FindIndex(ColourModes, c => c.Mode == AudioColourMode.Palette);
+        _loading = false;
     }
 
     private void AudioLayout_Changed(object sender, SelectionChangedEventArgs e)

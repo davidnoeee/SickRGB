@@ -62,18 +62,6 @@
                             HorizontalAlignment="Left" Width="520" ValueChanged="Intensity_Changed"/>
                 </StackPanel>
 
-                <!-- brightness -->
-                <StackPanel Margin="0,14,0,0">
-                    <Grid>
-                        <TextBlock Text="Master brightness" Style="{StaticResource SectionHeaderText}"/>
-                        <TextBlock x:Name="BrightnessValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
-                    </Grid>
-                    <Slider x:Name="BrightnessSlider" Style="{StaticResource FluentSlider}" MaxWidth="520"
-                            HorizontalAlignment="Left" Width="520" ValueChanged="Brightness_Changed"/>
-                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
-                               Text="Applies to every device, whatever effect it is running."/>
-                </StackPanel>
-
                 <!-- ambient -->
                 <StackPanel x:Name="AmbientSection" Margin="0,26,0,0" Visibility="Collapsed">
                     <TextBlock Text="Screen capture" Style="{StaticResource SectionHeaderText}"/>
@@ -118,17 +106,10 @@
                 <StackPanel x:Name="AudioSection" Margin="0,26,0,0" Visibility="Collapsed">
                     <TextBlock Text="Sound" Style="{StaticResource SectionHeaderText}"/>
 
-                    <Border Style="{StaticResource SubtleCard}" Padding="14,12" MaxWidth="520"
-                            HorizontalAlignment="Left" Margin="0,0,0,16">
-                        <StackPanel>
-                            <TextBlock x:Name="AudioStatus" Style="{StaticResource BodyText}"
-                                       Text="Listening to whatever your PC is playing."/>
-                            <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0"
-                                       Text="Every device is its own display. Devices with plenty of lights show a spectrum; devices with only a few pulse with the volume. Choose which part of the music each one shows on the Devices page."/>
-                            <TextBlock Style="{StaticResource CaptionText}" Margin="0,6,0,0"
-                                       Text="Audio is only listened to while this effect is running, and is never recorded or sent anywhere."/>
-                        </StackPanel>
-                    </Border>
+                    <!-- Only appears if capture actually fails; silence would be worse. -->
+                    <TextBlock x:Name="AudioStatus" Style="{StaticResource BodyText}" MaxWidth="520"
+                               HorizontalAlignment="Left" Margin="0,0,0,14" Visibility="Collapsed"
+                               Foreground="{StaticResource WarningBrush}"/>
 
                     <CheckBox x:Name="ChkMicrophone" Style="{StaticResource ToggleSwitch}"
                               Content="Listen to a microphone instead" Click="Microphone_Click"/>
@@ -201,6 +182,22 @@
                             MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="AudioFloor_Changed"/>
                     <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
                                Text="Keeps a little light showing between beats instead of dropping to black."/>
+                </StackPanel>
+
+                <!--
+                    Master brightness lives at the bottom: it applies to everything rather
+                    than to the effect above it, so it reads better as a closing control
+                    than as one more option in the middle of the effect's own settings.
+                -->
+                <StackPanel Margin="0,30,0,0">
+                    <Grid>
+                        <TextBlock Text="Master brightness" Style="{StaticResource SectionHeaderText}"/>
+                        <TextBlock x:Name="BrightnessValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="BrightnessSlider" Style="{StaticResource FluentSlider}" MaxWidth="520"
+                            HorizontalAlignment="Left" Width="520" ValueChanged="Brightness_Changed"/>
+                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                               Text="Applies to every device, whatever effect it is running."/>
                 </StackPanel>
 
             </StackPanel>

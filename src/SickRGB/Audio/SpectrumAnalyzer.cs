@@ -78,7 +78,7 @@ public sealed class AudioOptions
     public double Gain = 2.0;
 
     /// <summary>How quickly bands are allowed to fall. Higher is smoother and lazier.</summary>
-    public double Smoothing = 0.55;
+    public double Smoothing = 0.80;
 
     /// <summary>Level below which a band is treated as silence, to stop idle shimmer.</summary>
     public double NoiseGate = 0.03;
@@ -190,7 +190,8 @@ public sealed class SpectrumAnalyzer
     /// <summary>Instant rise, smoothed fall.</summary>
     private void Smooth(AudioOptions options, double delta)
     {
-        double smoothing = Math.Clamp(options.Smoothing, 0, 0.97);
+        // Stops just short of 1: at exactly 1 the bands would never fall at all.
+        double smoothing = Math.Clamp(options.Smoothing, 0, 0.995);
         double fall = 1.0 - Math.Pow(smoothing, Math.Max(delta, 1e-4) * 60.0);
 
         for (int b = 0; b < BandCount; b++)
@@ -202,7 +203,8 @@ public sealed class SpectrumAnalyzer
 
     private void Decay(AudioOptions options, double delta)
     {
-        double smoothing = Math.Clamp(options.Smoothing, 0, 0.97);
+        // Stops just short of 1: at exactly 1 the bands would never fall at all.
+        double smoothing = Math.Clamp(options.Smoothing, 0, 0.995);
         double fall = 1.0 - Math.Pow(smoothing, Math.Max(delta, 1e-4) * 60.0);
 
         double total = 0;

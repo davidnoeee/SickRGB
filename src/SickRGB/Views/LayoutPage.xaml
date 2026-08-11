@@ -86,7 +86,7 @@
 
             <TextBlock Grid.Column="0" x:Name="HintText" Style="{StaticResource CaptionText}"
                        VerticalAlignment="Center"
-                       Text="Drag to move  ·  drag a corner to resize  ·  scroll to zoom  ·  middle-drag to pan  ·  hold Alt to bypass snapping"/>
+                       Text="Drag to move  ·  drag a corner to resize  ·  drag just outside a corner to turn  ·  scroll to zoom  ·  middle-drag to pan  ·  hold Alt to bypass snapping"/>
 
             <TextBlock Grid.Column="1" x:Name="SelectionText" Style="{StaticResource CaptionText}"
                        VerticalAlignment="Center" Margin="20,0,0,0"/>

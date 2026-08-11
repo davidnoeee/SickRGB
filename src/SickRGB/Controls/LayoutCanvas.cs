@@ -52,12 +52,25 @@ public sealed class LayoutCanvas : FrameworkElement
 
     private static readonly Brush HandleFill = Frozen(Color.FromRgb(0xFF, 0xFF, 0xFF));
     private static readonly Pen HandlePen = FrozenPen(Color.FromArgb(0x90, 0x00, 0x00, 0x00), 1);
+    private static readonly Pen RotateHintPen = FrozenPen(Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF), 1.6);
 
     // Resize state
     private LightDevice? _resizing;
     private double _resizeStartScale;
     private double _resizeStartDistance;
     private Point _resizeCentre;
+
+    // Rotate state
+    private LightDevice? _rotating;
+    private double _rotateStartAngle;
+    private double _rotateStartRotation;
+    private Point _rotateCentre;
+
+    /// <summary>Which corner's rotate zone the pointer is over, or -1. Drives the hint arc.</summary>
+    private int _rotateHoverCorner = -1;
+
+    /// <summary>Rotation snaps to this while snapping is on; hold Alt for any angle.</summary>
+    private const double RotationSnapDegrees = 15;
 
     private static Brush Frozen(Color c)
     {
@@ -281,9 +294,14 @@ public sealed class LayoutCanvas : FrameworkElement
         // Corner grips, only on the selected device.
         if (ReferenceEquals(device, _selected))
         {
-            foreach (var corner in CornerPoints(rect))
+            var corners = CornerPoints(rect);
+            for (int i = 0; i < corners.Length; i++)
             {
-                dc.DrawEllipse(HandleFill, HandlePen, corner, HandleRadius, HandleRadius);
+                dc.DrawEllipse(HandleFill, HandlePen, corners[i], HandleRadius, HandleRadius);
+
+                // Hint arc, shown while the pointer sits in this corner's rotate zone.
+                if (i == _rotateHoverCorner || _rotating is not null)
+                    DrawRotateHint(dc, corners[i], rect);
             }
         }
 
@@ -294,18 +312,33 @@ public sealed class LayoutCanvas : FrameworkElement
         var label = MakeText(device.Name, 12.5, device.Enabled ? LabelBrush : SubLabelBrush);
         double labelY = rect.Y - label.Height - 5;
         if (rotated) labelY = Math.Min(labelY, rect.Y + rect.Height / 2 - Math.Max(w, h) / 2 - label.Height - 5);
-        dc.DrawText(label, new Point(rect.X, labelY));
 
-        // Role and light count, only when there is room
-        if (w > 90)
+        // Details sit hard against the right edge; the name gets whatever is left and is
+        // trimmed to fit. A long device name should never push its own details off the
+        // card or overlap them.
+        FormattedText? details = null;
+        if (w > 110)
         {
             string sub = $"{device.Role}  ·  {device.ZoneCount} light{(device.ZoneCount == 1 ? "" : "s")}";
             if (Math.Abs(device.Rotation) > 0.01) sub += $"  ·  {device.Rotation:0}°";
             if (Math.Abs(device.Scale - 1.0) > 0.01) sub += $"  ·  {device.Scale * 100:0}%";
 
-            var subText = MakeText(sub, 10.5, SubLabelBrush);
-            dc.DrawText(subText, new Point(rect.X + label.Width + 8, labelY + 1));
+            details = MakeText(sub, 10.5, SubLabelBrush);
+
+            // Drop the details entirely rather than squeeze the name to nothing.
+            if (details.Width > w - 60) details = null;
         }
+
+        const double gap = 12;
+        double nameWidth = details is null ? w : w - details.Width - gap;
+
+        label.MaxTextWidth = Math.Max(24, nameWidth);
+        label.MaxLineCount = 1;
+        label.Trimming = TextTrimming.CharacterEllipsis;
+        dc.DrawText(label, new Point(rect.X, labelY));
+
+        if (details is not null)
+            dc.DrawText(details, new Point(rect.Right - details.Width, labelY + 1));
     }
 
     /// <summary>The four corners of a rectangle, clockwise from the top left.</summary>
@@ -316,6 +349,37 @@ public sealed class LayoutCanvas : FrameworkElement
         new Point(r.Right, r.Bottom),
         new Point(r.Left,  r.Bottom),
     };
+
+    /// <summary>
+    /// Draws a quarter arc just outside a corner, showing where the rotate zone is.
+    ///
+    /// The arc always bulges away from the device, which is what makes it read as
+    /// "turn from out here" rather than as part of the device itself.
+    /// </summary>
+    private static void DrawRotateHint(DrawingContext dc, Point corner, Rect rect)
+    {
+        double radius = HandleRadius + 9;
+
+        var centre = new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2);
+        double dirX = corner.X < centre.X ? -1 : 1;
+        double dirY = corner.Y < centre.Y ? -1 : 1;
+
+        var start = new Point(corner.X + dirX * radius, corner.Y);
+        var end = new Point(corner.X, corner.Y + dirY * radius);
+
+        // Opposite signs mean the outward quadrant is reached the other way round.
+        var sweep = dirX * dirY > 0 ? SweepDirection.Clockwise : SweepDirection.Counterclockwise;
+
+        var geometry = new StreamGeometry();
+        using (var ctx = geometry.Open())
+        {
+            ctx.BeginFigure(start, false, false);
+            ctx.ArcTo(end, new Size(radius, radius), 0, false, sweep, true, false);
+        }
+        geometry.Freeze();
+
+        dc.DrawGeometry(null, RotateHintPen, geometry);
+    }
 
     private FormattedText MakeText(string text, double size, Brush brush) =>
         new(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
@@ -365,6 +429,14 @@ public sealed class LayoutCanvas : FrameworkElement
         return null;
     }
 
+    private Point[] DeviceCorners(LightDevice d) => new[]
+    {
+        new Point(d.X, d.Y),
+        new Point(d.X + d.ScaledWidth, d.Y),
+        new Point(d.X + d.ScaledWidth, d.Y + d.ScaledHeight),
+        new Point(d.X, d.Y + d.ScaledHeight),
+    };
+
     /// <summary>Returns true if the point is over one of the selected device's corner grips.</summary>
     private bool IsOverHandle(LightDevice device, Point screen)
     {
@@ -373,19 +445,48 @@ public sealed class LayoutCanvas : FrameworkElement
         // Grip radius is in screen pixels, so convert it to world units.
         double reach = (HandleRadius + 4) / Math.Max(_scale, 1e-6);
 
-        foreach (var corner in new[]
-                 {
-                     new Point(device.X, device.Y),
-                     new Point(device.X + device.ScaledWidth, device.Y),
-                     new Point(device.X + device.ScaledWidth, device.Y + device.ScaledHeight),
-                     new Point(device.X, device.Y + device.ScaledHeight),
-                 })
+        foreach (var corner in DeviceCorners(device))
         {
             if (Math.Abs(local.X - corner.X) <= reach && Math.Abs(local.Y - corner.Y) <= reach)
                 return true;
         }
         return false;
     }
+
+    /// <summary>
+    /// Finds the rotate zone: a small quarter circle just beyond a corner, outside the
+    /// device on both axes.
+    ///
+    /// This is the convention design tools use, and it works because the space diagonally
+    /// beyond a corner belongs to nothing else. Requiring the pointer to be outside on
+    /// both axes is what keeps it from stealing the edges, where a drag should still move
+    /// the device.
+    /// </summary>
+    private int RotateZoneCorner(LightDevice device, Point screen)
+    {
+        var local = ToDeviceSpace(device, screen);
+
+        double scale = Math.Max(_scale, 1e-6);
+        double inner = (HandleRadius + 3) / scale;
+        double outer = (HandleRadius + 22) / scale;
+
+        var corners = DeviceCorners(device);
+        for (int i = 0; i < corners.Length; i++)
+        {
+            double distance = Distance(local, corners[i]);
+            if (distance <= inner || distance > outer) continue;
+
+            bool beyondX = local.X < device.X || local.X > device.X + device.ScaledWidth;
+            bool beyondY = local.Y < device.Y || local.Y > device.Y + device.ScaledHeight;
+            if (beyondX && beyondY) return i;
+        }
+
+        return -1;
+    }
+
+    /// <summary>Angle from a device's centre to a world point, in degrees.</summary>
+    private static double AngleTo(Point centre, Point world) =>
+        Math.Atan2(world.Y - centre.Y, world.X - centre.X) * 180.0 / Math.PI;
 
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
@@ -394,11 +495,19 @@ public sealed class LayoutCanvas : FrameworkElement
 
         var position = e.GetPosition(this);
 
-        // A grip on the already-selected device takes priority: its corners can sit over
-        // a neighbouring device, and grabbing that instead would be maddening.
+        // Grips and the rotate ring on the already-selected device take priority: they sit
+        // over, and outside, neighbouring devices, and grabbing one of those instead would
+        // be maddening.
         if (_selected is not null && IsOverHandle(_selected, position))
         {
             StartResize(_selected, position);
+            InvalidateVisual();
+            return;
+        }
+
+        if (_selected is not null && RotateZoneCorner(_selected, position) >= 0)
+        {
+            StartRotate(_selected, position);
             InvalidateVisual();
             return;
         }
@@ -437,10 +546,32 @@ public sealed class LayoutCanvas : FrameworkElement
             return;
         }
 
-        // Show a grip cursor when hovering a corner of the selected device.
+        if (_rotating is not null)
+        {
+            ApplyRotate(pos);
+            return;
+        }
+
+        // Cursor and hint follow whichever zone the pointer is in.
         if (_dragging is null && _selected is not null)
         {
-            Cursor = IsOverHandle(_selected, pos) ? Cursors.SizeNWSE : null;
+            int rotateCorner = RotateZoneCorner(_selected, pos);
+            bool overGrip = IsOverHandle(_selected, pos);
+
+            Cursor = overGrip ? Cursors.SizeNWSE
+                   : rotateCorner >= 0 ? Cursors.Hand
+                   : null;
+
+            if (rotateCorner != _rotateHoverCorner)
+            {
+                _rotateHoverCorner = rotateCorner;
+                InvalidateVisual();
+            }
+        }
+        else if (_rotateHoverCorner != -1)
+        {
+            _rotateHoverCorner = -1;
+            InvalidateVisual();
         }
 
         if (_dragging is null) return;
@@ -510,6 +641,41 @@ public sealed class LayoutCanvas : FrameworkElement
         return Math.Sqrt(dx * dx + dy * dy);
     }
 
+    /// <summary>
+    /// Begins a rotation drag. The angle offset between the pointer and the device's
+    /// current rotation is kept, so the device does not jump to meet the cursor.
+    /// </summary>
+    private void StartRotate(LightDevice device, Point screen)
+    {
+        _rotating = device;
+        _rotateCentre = new Point(device.X + device.ScaledWidth / 2.0,
+                                  device.Y + device.ScaledHeight / 2.0);
+        _rotateStartRotation = device.Rotation;
+        _rotateStartAngle = AngleTo(_rotateCentre, ScreenToWorld(screen));
+
+        Cursor = Cursors.Hand;
+        CaptureMouse();
+    }
+
+    private void ApplyRotate(Point screen)
+    {
+        if (_rotating is null) return;
+
+        double angle = AngleTo(_rotateCentre, ScreenToWorld(screen));
+        double rotation = _rotateStartRotation + (angle - _rotateStartAngle);
+
+        // Snapping follows the same rule as dragging: on by default, Alt for free movement.
+        bool free = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
+        if (SnapToGrid && !free)
+            rotation = Math.Round(rotation / RotationSnapDegrees) * RotationSnapDegrees;
+
+        _rotating.Rotation = (rotation % 360 + 360) % 360;
+
+        // Rotating about the centre leaves the top-left where it was, so nothing shifts.
+        DeviceMoved?.Invoke(_rotating);
+        InvalidateVisual();
+    }
+
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonUp(e);
@@ -521,6 +687,17 @@ public sealed class LayoutCanvas : FrameworkElement
             Cursor = null;
             ReleaseMouseCapture();
             DeviceMoved?.Invoke(resized);
+            InvalidateVisual();
+            return;
+        }
+
+        if (_rotating is not null)
+        {
+            var rotated = _rotating;
+            _rotating = null;
+            Cursor = null;
+            ReleaseMouseCapture();
+            DeviceMoved?.Invoke(rotated);
             InvalidateVisual();
             return;
         }
@@ -596,6 +773,17 @@ public sealed class LayoutCanvas : FrameworkElement
         }
         _dragging = null;
         _resizing = null;
+        _rotating = null;
+    }
+
+    protected override void OnMouseLeave(MouseEventArgs e)
+    {
+        base.OnMouseLeave(e);
+        if (_rotateHoverCorner != -1)
+        {
+            _rotateHoverCorner = -1;
+            InvalidateVisual();
+        }
     }
 
     /// <summary>Turns the selected device by <paramref name="degrees"/>.</summary>

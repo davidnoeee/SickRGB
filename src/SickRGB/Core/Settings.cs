@@ -81,13 +81,13 @@ public sealed class AppSettings
     public bool AudioUseMicrophone { get; set; }
 
     public double AudioGain { get; set; } = 2.0;
-    public double AudioSmoothing { get; set; } = 0.55;
+    public double AudioSmoothing { get; set; } = 0.80;
     public double AudioNoiseGate { get; set; } = 0.03;
     public double AudioMinHz { get; set; } = 40;
     public double AudioMaxHz { get; set; } = 12000;
 
     public SickRGB.Audio.AudioColourMode AudioColourMode { get; set; } = SickRGB.Audio.AudioColourMode.Spectrum;
-    public SickRGB.Audio.AudioLayout AudioLayout { get; set; } = SickRGB.Audio.AudioLayout.BassInCentre;
+    public SickRGB.Audio.AudioLayout AudioLayout { get; set; } = SickRGB.Audio.AudioLayout.BassAtEdges;
 
     /// <summary>Keeps a little light showing in the quiet parts instead of going black.</summary>
     public double AudioFloor { get; set; }

@@ -163,7 +163,7 @@
                         <TextBlock Text="Smoothing" Style="{StaticResource SectionHeaderText}"/>
                         <TextBlock x:Name="AudioSmoothValue" Style="{StaticResource CaptionText}" HorizontalAlignment="Right"/>
                     </Grid>
-                    <Slider x:Name="AudioSmoothSlider" Style="{StaticResource FluentSlider}" Maximum="0.95"
+                    <Slider x:Name="AudioSmoothSlider" Style="{StaticResource FluentSlider}" Maximum="0.99"
                             MaxWidth="520" HorizontalAlignment="Left" Width="520" ValueChanged="AudioSmooth_Changed"/>
                     <TextBlock Style="{StaticResource CaptionText}" Margin="0,2,0,0"
                                Text="How gently the lights fall back after a beat. Low is snappy, high is flowing."/>

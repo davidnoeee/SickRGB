@@ -162,8 +162,8 @@
   --gutter: clamp(1.25rem, 5vw, 2rem);
   /* The hero already fills the viewport, so the drop into the first section
      stays as it was; the gaps between the sections below it are wider. */
-  --section-gap: clamp(5rem, 11vw, 8.5rem);
-  --section-gap-lg: clamp(7rem, 16vw, 12.5rem);
+  --section-gap: clamp(7rem, 14vw, 11rem);
+  --section-gap-lg: clamp(9.5rem, 20vw, 16rem);
 }
 
 /* =========================================================================
@@ -622,27 +622,15 @@ main,
   opacity: 0.5;
 }
 
-/* The hero fills the viewport, so the page needs a visible cue that there is
-   more underneath it. */
-.hero__more {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+/* Room at the foot of the hero for the desk: a keyboard and a mouse on a lit
+   pad, drawn by the background canvas rather than by markup, because they are
+   lights on the same field as everything else and have to read the same wave.
+   The height tracks the size the canvas draws them at, which is the viewport
+   width over 1500, held between half size and full. */
+.hero__desk {
+  width: 100%;
+  height: clamp(3.75rem, 8vw, 7.5rem);
   margin-block-start: clamp(2.5rem, 7vh, 4.5rem);
-  padding-block: 0.5rem;
-  color: var(--text-tertiary);
-  font-size: var(--text-caption);
-  text-decoration: none;
-  transition: color 150ms var(--ease-state);
-}
-
-.hero__more:hover {
-  color: var(--text-primary);
-}
-
-.hero__more svg {
-  width: 0.9375rem;
-  height: 0.9375rem;
 }
 
 /* =========================================================================

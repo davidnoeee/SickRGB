@@ -48,14 +48,17 @@ const FALLBACK: ReleaseInfo = {
 }
 
 export default defineCachedEventHandler(
-  async (): Promise<ReleaseInfo> => {
+  async (event): Promise<ReleaseInfo> => {
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github+json',
       'User-Agent': 'sickrgb-site',
     }
 
-    // A token lifts the unauthenticated rate limit, but is entirely optional.
-    const token = process.env.GITHUB_TOKEN
+    // Runtime config rather than process.env: on Cloudflare and other edge
+    // runtimes the platform's variables are bound to the request, not to a
+    // Node style global. Set NUXT_GITHUB_TOKEN to lift the unauthenticated
+    // GitHub rate limit; it is optional everywhere.
+    const token = useRuntimeConfig(event).githubToken
     if (token) headers.Authorization = `Bearer ${token}`
 
     const [release, repo] = await Promise.all([

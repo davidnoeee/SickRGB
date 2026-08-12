@@ -5,6 +5,12 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  runtimeConfig: {
+    // Server only. Override with NUXT_GITHUB_TOKEN. Optional: without it the
+    // release lookup just uses GitHub's unauthenticated rate limit.
+    githubToken: '',
+  },
+
   app: {
     head: {
       htmlAttrs: { lang: 'en' },

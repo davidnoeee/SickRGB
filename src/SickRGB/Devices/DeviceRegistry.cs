@@ -33,6 +33,7 @@ public sealed class DeviceRegistry : IDisposable
     {
         _providers.Add(new MagmaProvider());
         _providers.Add(new ViaKeyboardProvider());
+        _providers.Add(new EVisionKeyboardProvider());
         _providers.Add(new LogitechProvider());
         _providers.Add(new OpenRgbProvider());
     }

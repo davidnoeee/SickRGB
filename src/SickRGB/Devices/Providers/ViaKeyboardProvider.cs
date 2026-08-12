@@ -58,14 +58,26 @@ public sealed class ViaKeyboardProvider : ILightProvider
     /// <summary>QMK's RGB Matrix effect list puts "solid colour" at index 1 (0 is off).</summary>
     private const byte EffectSolidColor = 1;
 
+    /// <summary>How often solid mode is re-sent. Long enough to be free, short enough to notice.</summary>
+    private static readonly TimeSpan SolidModeInterval = TimeSpan.FromSeconds(5);
+
     private sealed class ViaState
     {
         public required SafeFileHandleEx Handle { get; init; }
         public required byte Channel { get; init; }
         public required int ProtocolVersion { get; init; }
-        public bool SolidModeSet;
         public Rgb24 LastSent = new(1, 2, 3);   // deliberately unlikely, forces a first write
         public bool Broken;
+
+        /// <summary>
+        /// When solid mode was last asserted.
+        ///
+        /// It is re-sent every so often rather than once, because the effect keys on the
+        /// board itself still work while the app is running. Someone who bumps one drops
+        /// the keyboard back into its own animation, and setting a colour we already
+        /// think is current would otherwise never bring it back.
+        /// </summary>
+        public DateTime SolidModeSetAt = DateTime.MinValue;
     }
 
     private readonly List<ViaState> _open = new();
@@ -147,28 +159,41 @@ public sealed class ViaKeyboardProvider : ILightProvider
         return Task.FromResult<IReadOnlyList<LightDevice>>(found);
     }
 
-    /// <summary>Asks for the VIA protocol version. Read-only; returns 0 if there is no answer.</summary>
+    /// <summary>
+    /// Asks for the VIA protocol version. Read-only; returns 0 if there is no answer.
+    ///
+    /// Tried more than once because a board that has just enumerated, or one whose own
+    /// software has only recently let go of it, drops the first request often enough to
+    /// matter. A single miss used to mean the keyboard was skipped entirely and the user
+    /// had to press Rescan until it happened to land.
+    /// </summary>
     private static int QueryProtocolVersion(SafeFileHandleEx handle)
     {
-        try
+        for (int attempt = 0; attempt < 3; attempt++)
         {
-            var request = new byte[BufferLength];
-            request[1] = CmdGetProtocolVersion;
+            try
+            {
+                var request = new byte[BufferLength];
+                request[1] = CmdGetProtocolVersion;
 
-            if (!HidNative.WriteFile(handle, request, request.Length, out _, IntPtr.Zero)) return 0;
+                if (!HidNative.WriteFile(handle, request, request.Length, out _, IntPtr.Zero)) continue;
 
-            var reply = HidNative.ReadWithTimeout(handle, BufferLength, 400);
-            if (reply is null) return 0;
+                var reply = HidNative.ReadWithTimeout(handle, BufferLength, 400);
+                if (reply is null) continue;
 
-            // The reply echoes the command, then the version as big-endian.
-            if (reply[0] != CmdGetProtocolVersion) return 0;
-            return (reply[1] << 8) | reply[2];
+                // The reply echoes the command, then the version as big-endian.
+                if (reply[0] != CmdGetProtocolVersion) continue;
+
+                int version = (reply[1] << 8) | reply[2];
+                if (version > 0) return version;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[VIA] version probe failed: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[VIA] version probe failed: {ex.Message}");
-            return 0;
-        }
+
+        return 0;
     }
 
     /// <summary>
@@ -209,7 +234,9 @@ public sealed class ViaKeyboardProvider : ILightProvider
         if (device.Tag is not ViaState state || state.Broken || zoneColors.Length == 0) return false;
 
         var colour = zoneColors[0];
-        if (colour == state.LastSent) return true;
+        bool reassert = DateTime.UtcNow - state.SolidModeSetAt > SolidModeInterval;
+
+        if (colour == state.LastSent && !reassert) return true;
 
         // VIA separates hue/saturation from brightness, so the colour has to be converted.
         var (h, s, v) = RgbF.From(colour).ToHsv();
@@ -219,12 +246,12 @@ public sealed class ViaKeyboardProvider : ILightProvider
 
         try
         {
-            // Put the board into solid-colour mode once, otherwise its own animation
-            // keeps overwriting whatever colour we set.
-            if (!state.SolidModeSet)
+            // Put the board into solid-colour mode, otherwise its own animation keeps
+            // overwriting whatever colour we set.
+            if (reassert)
             {
                 if (!SetValue(state, ValueEffect, EffectSolidColor)) { state.Broken = true; return false; }
-                state.SolidModeSet = true;
+                state.SolidModeSetAt = DateTime.UtcNow;
             }
 
             if (!SetValue(state, ValueColor, hue, sat)) { state.Broken = true; return false; }

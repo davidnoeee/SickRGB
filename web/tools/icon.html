@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { margin: 0; padding: 0; }
+      html, body { background: transparent; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <script>
+      // The site mark: one lit light in a field of resting ones, on a rounded
+      // black tile. Same idea as the page background, at icon scale.
+      const S = Number(new URLSearchParams(location.search).get('s') || 512)
+      const canvas = document.getElementById('c')
+      canvas.width = S
+      canvas.height = S
+      canvas.style.width = S + 'px'
+      canvas.style.height = S + 'px'
+      const ctx = canvas.getContext('2d')
+
+      const u = S / 24 // design grid: 24 units square
+      const radius = 5.4 * u
+
+      function roundRect(x, y, w, h, r) {
+        ctx.beginPath()
+        ctx.moveTo(x + r, y)
+        ctx.arcTo(x + w, y, x + w, y + h, r)
+        ctx.arcTo(x + w, y + h, x, y + h, r)
+        ctx.arcTo(x, y + h, x, y, r)
+        ctx.arcTo(x, y, x + w, y, r)
+        ctx.closePath()
+      }
+
+      // Tile: essentially black, with just enough lift to keep its edge on a
+      // dark background.
+      const tile = ctx.createLinearGradient(0, 0, 0, S)
+      tile.addColorStop(0, '#24242a')
+      tile.addColorStop(0.55, '#131316')
+      tile.addColorStop(1, '#0b0b0d')
+      roundRect(0, 0, S, S, radius)
+      ctx.fillStyle = tile
+      ctx.fill()
+
+      // Hairline so the tile reads as an object, not a hole.
+      ctx.save()
+      roundRect(S * 0.004, S * 0.004, S * 0.992, S * 0.992, radius - S * 0.004)
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)'
+      ctx.lineWidth = Math.max(1, S / 256)
+      ctx.stroke()
+      ctx.restore()
+
+      const cells = [5.6, 12, 18.4]
+      const small = 1.75 * u
+      const big = 3.1 * u
+
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          const centre = i === 1 && j === 1
+          ctx.beginPath()
+          ctx.arc(cells[i] * u, cells[j] * u, centre ? big : small, 0, Math.PI * 2)
+          ctx.fillStyle = centre ? '#ffffff' : 'rgba(255,255,255,0.5)'
+          ctx.fill()
+        }
+      }
+
+      // Nine dots, the middle one lit. Nothing else.
+    </script>
+  </body>
+</html>

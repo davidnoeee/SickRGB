@@ -1,0 +1,1320 @@
+/* =========================================================================
+   SickRGB - design tokens
+
+   One neutral grey ramp with semantic roles on top. No hue anywhere in the
+   page itself: colour belongs to the app, so it appears only in the icon, in
+   the wave a click sends across the background, and in the four effect
+   sketches where colour is literally what the effect is.
+   ========================================================================= */
+
+:root {
+  color-scheme: light;
+
+  --g-100: #fcfcfc;
+  --g-200: #f6f6f6;
+  --g-300: #f0f0f0;
+  --g-400: #e8e8e8;
+  --g-500: #e0e0e0;
+  --g-600: #d9d9d9;
+  --g-700: #cecece;
+  --g-800: #bbbbbb;
+  --g-900: #8d8d8d;
+  --g-1000: #838383;
+  --g-1100: #646464;
+  --g-1200: #202020;
+
+  --page: #fcfcfc;
+  --surface: #ffffff;
+  --surface-sunken: var(--g-200);
+  --text-primary: #101010;
+  --text-secondary: var(--g-1100);
+  /* Not --g-1000: that only reaches 3.7:1 here, short of the 4.5:1 this text
+     needs at 13px. #707070 measures 4.9:1 on the page and 5.0:1 on a card. */
+  --text-tertiary: #707070;
+  --separator: var(--g-400);
+  --focus-ring: #101010;
+
+  --action-bg: #101010;
+  --action-bg-hover: #000000;
+  --action-fg: #fafafa;
+
+  /* The light field: a dot at rest, and a dot at full strength. */
+  --light-rest: #c4c4c4;
+  --light-lit: #0d0d0d;
+
+  --shadow-border:
+    0 0 0 1px oklch(0 0 0 / 0.06),
+    0 1px 2px -1px oklch(0 0 0 / 0.06),
+    0 2px 4px 0 oklch(0 0 0 / 0.04);
+  --shadow-border-hover:
+    0 0 0 1px oklch(0 0 0 / 0.08),
+    0 1px 2px -1px oklch(0 0 0 / 0.08),
+    0 2px 4px 0 oklch(0 0 0 / 0.06);
+  --shadow-raised:
+    0 0 0 1px oklch(0 0 0 / 0.07),
+    0 2px 4px -2px oklch(0 0 0 / 0.08),
+    0 12px 28px -10px oklch(0 0 0 / 0.12);
+  --control-highlight: inset 0 1px 0 0 oklch(1 0 0 / 0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+
+    --g-100: #111111;
+    --g-200: #191919;
+    --g-300: #222222;
+    --g-400: #2a2a2a;
+    --g-500: #313131;
+    --g-600: #3a3a3a;
+    --g-700: #484848;
+    --g-800: #606060;
+    --g-900: #6e6e6e;
+    --g-1000: #7b7b7b;
+    --g-1100: #b5b5b5;
+    --g-1200: #eeeeee;
+
+    --page: #0c0c0d;
+    --surface: #111111;
+    --surface-sunken: #171717;
+    --text-primary: #f2f2f2;
+    --text-secondary: var(--g-1100);
+    /* 5.3:1 on the page and on a card; --g-1000 lands just under 4.5:1. */
+    --text-tertiary: #8a8a8a;
+    --separator: var(--g-400);
+    --focus-ring: #f2f2f2;
+
+    --action-bg: #f5f5f5;
+    --action-bg-hover: #ffffff;
+    --action-fg: #0a0a0a;
+
+    --light-rest: #3f3f3f;
+    --light-lit: #f6f6f6;
+
+    --shadow-border: 0 0 0 1px oklch(1 0 0 / 0.08);
+    --shadow-border-hover: 0 0 0 1px oklch(1 0 0 / 0.13);
+    --shadow-raised: 0 0 0 1px oklch(1 0 0 / 0.1), 0 16px 40px -16px oklch(0 0 0 / 0.8);
+    --control-highlight: inset 0 1px 0 0 oklch(1 0 0 / 0.06);
+  }
+}
+
+:root.dark {
+  color-scheme: dark;
+
+  --g-100: #111111;
+  --g-200: #191919;
+  --g-300: #222222;
+  --g-400: #2a2a2a;
+  --g-500: #313131;
+  --g-600: #3a3a3a;
+  --g-700: #484848;
+  --g-800: #606060;
+  --g-900: #6e6e6e;
+  --g-1000: #7b7b7b;
+  --g-1100: #b5b5b5;
+  --g-1200: #eeeeee;
+
+  --page: #0c0c0d;
+  --surface: #111111;
+  --surface-sunken: #171717;
+  --text-primary: #f2f2f2;
+  --text-secondary: var(--g-1100);
+  /* 5.3:1 on the page and on a card; --g-1000 lands just under 4.5:1. */
+  --text-tertiary: #8a8a8a;
+  --separator: var(--g-400);
+  --focus-ring: #f2f2f2;
+
+  --action-bg: #f5f5f5;
+  --action-bg-hover: #ffffff;
+  --action-fg: #0a0a0a;
+
+  --light-rest: #3f3f3f;
+  --light-lit: #f6f6f6;
+
+  --shadow-border: 0 0 0 1px oklch(1 0 0 / 0.08);
+  --shadow-border-hover: 0 0 0 1px oklch(1 0 0 / 0.13);
+  --shadow-raised: 0 0 0 1px oklch(1 0 0 / 0.1), 0 16px 40px -16px oklch(0 0 0 / 0.8);
+  --control-highlight: inset 0 1px 0 0 oklch(1 0 0 / 0.06);
+}
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Segoe UI Mono', Menlo, monospace;
+
+  --text-display: clamp(2.5rem, 1.45rem + 4.4vw, 4.375rem);
+  --text-title: clamp(1.75rem, 1.45rem + 1.3vw, 2.25rem);
+  --text-lead: clamp(1.0625rem, 1rem + 0.3vw, 1.1875rem);
+  --text-heading: 1.0625rem;
+  --text-body: 1rem;
+  --text-small: 0.875rem;
+  --text-caption: 0.8125rem;
+
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-state: cubic-bezier(0.2, 0, 0, 1);
+
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+
+  --header-h: 3.75rem;
+  --layout-max: 68rem;
+  --gutter: clamp(1.25rem, 5vw, 2rem);
+  /* The hero already fills the viewport, so the drop into the first section
+     stays as it was; the gaps between the sections below it are wider. */
+  --section-gap: clamp(5rem, 11vw, 8.5rem);
+  --section-gap-lg: clamp(7rem, 16vw, 12.5rem);
+}
+
+/* =========================================================================
+   Base
+   ========================================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-optical-sizing: auto;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 560;
+  letter-spacing: -0.022em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration-color: color-mix(in oklab, currentColor 30%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 150ms var(--ease-state);
+}
+
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+img,
+svg,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+main:focus {
+  outline: none;
+}
+
+::selection {
+  background: var(--text-primary);
+  color: var(--page);
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The header is sticky, so anchored sections must stop clear of it. */
+[id] {
+  scroll-margin-top: 5rem;
+}
+
+.skip-link {
+  position: absolute;
+  inset-inline-start: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 0.625rem 1rem;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--text-small);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  inset-inline-start: var(--gutter);
+  top: var(--gutter);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =========================================================================
+   The light field behind everything
+   ========================================================================= */
+
+.grid-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  /* Never intercept a click: the wave is driven from a window listener, so
+     buttons and links keep working normally. */
+  pointer-events: none;
+}
+
+main,
+.site-footer {
+  position: relative;
+  z-index: 1;
+}
+
+/* =========================================================================
+   Layout
+   ========================================================================= */
+
+.shell {
+  width: 100%;
+  max-width: var(--layout-max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.section {
+  padding-block: var(--section-gap) var(--section-gap-lg);
+}
+
+.section + .section {
+  padding-block-start: 0;
+}
+
+.section__head {
+  max-width: 36rem;
+  margin-block-end: clamp(2.5rem, 5vw, 3.5rem);
+}
+
+.section__head h2 {
+  font-size: var(--text-title);
+}
+
+.section__head p {
+  margin-block-start: 0.875rem;
+  color: var(--text-secondary);
+  font-size: var(--text-lead);
+  line-height: 1.55;
+}
+
+.section__head--tight {
+  margin-block-end: 2rem;
+}
+
+.eyebrow {
+  display: block;
+  margin-block-end: 0.875rem;
+  color: var(--text-tertiary);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* =========================================================================
+   Controls
+   ========================================================================= */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding-inline: 1.125rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition-property: scale, background-color, box-shadow, color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-state);
+}
+
+.btn:active {
+  scale: 0.96;
+}
+
+.btn--primary {
+  background: var(--action-bg);
+  color: var(--action-fg);
+  box-shadow: var(--shadow-border);
+}
+
+.btn--primary:hover {
+  background: var(--action-bg-hover);
+  box-shadow: var(--shadow-border-hover);
+}
+
+.btn--secondary {
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-border), var(--control-highlight);
+}
+
+.btn--secondary:hover {
+  box-shadow: var(--shadow-border-hover), var(--control-highlight);
+}
+
+/* The icon side gets 2px less padding so the label sits optically centred
+   rather than geometrically centred. */
+.btn--has-trailing-icon {
+  padding-inline-end: calc(1.125rem - 2px);
+}
+
+.btn--has-leading-icon {
+  padding-inline-start: calc(1.125rem - 2px);
+}
+
+.btn__icon {
+  flex: none;
+  width: 1em;
+  height: 1em;
+}
+
+.btn__count {
+  padding-inline: 0.4375rem;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition-property: background-color, color, scale;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-state);
+}
+
+.icon-btn:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
+.icon-btn:active {
+  scale: 0.96;
+}
+
+/* =========================================================================
+   Header
+   ========================================================================= */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+/* An opaque scrim that fades to nothing, so the bar reads cleanly over the
+   light field without drawing a hard edge across the page. */
+.site-header::before {
+  content: '';
+  position: absolute;
+  /* Taller than the bar, and opaque only across the very top, so the fade has
+     already begun by the time it reaches the buttons. */
+  inset: 0 0 -3.25rem 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--page);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 10%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 10%, transparent 100%);
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: var(--header-h);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+/* The app icon carries its own rounded tile and transparent corners, so it
+   needs no radius or outline of its own. */
+.brand-mark {
+  flex: none;
+  width: 100%;
+  height: 100%;
+}
+
+.wordmark__mark {
+  flex: none;
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.site-nav {
+  display: none;
+  margin-inline-start: auto;
+  gap: 1.75rem;
+}
+
+.site-nav a {
+  /* Vertical padding only, so the target clears 24px without moving anything. */
+  padding-block: 0.5rem;
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+  text-decoration: none;
+  transition: color 150ms var(--ease-state);
+}
+
+.site-nav a:hover {
+  color: var(--text-primary);
+}
+
+.site-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-inline-start: auto;
+}
+
+.site-nav + .site-header__actions {
+  margin-inline-start: 1.75rem;
+}
+
+@media (min-width: 47rem) {
+  .site-nav {
+    display: flex;
+  }
+}
+
+/* =========================================================================
+   Hero
+   ========================================================================= */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--header-h));
+  min-height: calc(100svh - var(--header-h));
+  padding-block: clamp(3rem, 8vh, 5rem);
+  text-align: center;
+}
+
+.hero__title {
+  max-width: 19ch;
+  margin-inline: auto;
+  font-size: var(--text-display);
+  font-weight: 580;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+}
+
+.hero__lead {
+  max-width: 44ch;
+  margin-inline: auto;
+  margin-block-start: 1.375rem;
+  color: var(--text-secondary);
+  font-size: var(--text-lead);
+  line-height: 1.55;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-block-start: 2rem;
+}
+
+.hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+  margin-block-start: 1.5rem;
+  padding: 0;
+  list-style: none;
+  color: var(--text-tertiary);
+  font-size: var(--text-caption);
+}
+
+.hero__meta li {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.hero__meta li + li::before {
+  content: '';
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+/* The hero fills the viewport, so the page needs a visible cue that there is
+   more underneath it. */
+.hero__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block-start: clamp(2.5rem, 7vh, 4.5rem);
+  padding-block: 0.5rem;
+  color: var(--text-tertiary);
+  font-size: var(--text-caption);
+  text-decoration: none;
+  transition: color 150ms var(--ease-state);
+}
+
+.hero__more:hover {
+  color: var(--text-primary);
+}
+
+.hero__more svg {
+  width: 0.9375rem;
+  height: 0.9375rem;
+}
+
+/* =========================================================================
+   One canvas, one app
+   ========================================================================= */
+
+.split {
+  display: grid;
+  gap: clamp(2.5rem, 5vw, 3rem);
+  align-items: start;
+}
+
+@media (min-width: 60rem) {
+  .split {
+    grid-template-columns: 1.1fr 1fr;
+    gap: 4rem;
+  }
+}
+
+.points {
+  display: grid;
+  gap: 2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: point;
+}
+
+.points li {
+  counter-increment: point;
+}
+
+.points h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: var(--text-heading);
+  font-weight: 560;
+  letter-spacing: -0.015em;
+}
+
+.points h3::before {
+  content: counter(point, decimal-leading-zero);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.points p {
+  margin-block-start: 0.5rem;
+  padding-inline-start: 1.9rem;
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+  line-height: 1.55;
+}
+
+/* The app window sketch */
+
+.panel-figure {
+  container-type: inline-size;
+  margin: 0;
+}
+
+.panel {
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+  overflow: hidden;
+}
+
+.panel__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  border-block-end: 1px solid var(--separator);
+  background: var(--surface-sunken);
+}
+
+.panel__icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.panel__title {
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: 500;
+}
+
+.panel__body {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+}
+
+.panel__side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.75rem 0.5rem;
+  border-inline-end: 1px solid var(--separator);
+}
+
+.panel__side span {
+  padding: 0.375rem 0.625rem;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  font-size: var(--text-caption);
+}
+
+.panel__side .is-active {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.panel__main {
+  min-width: 0;
+  padding: 1rem 1rem 1.125rem;
+}
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block-end: 0.875rem;
+}
+
+.panel__heading {
+  font-size: var(--text-caption);
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.panel__count {
+  color: var(--text-tertiary);
+  font-size: 0.6875rem;
+}
+
+.panel__list {
+  display: grid;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panel__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.125rem;
+  border-radius: 8px;
+}
+
+/* A fixed eight cell readout, lit to the device's light count, so every row
+   lines up down the column. */
+.panel__matrix {
+  display: grid;
+  grid-template-columns: repeat(4, 4px);
+  gap: 3px;
+}
+
+.panel__matrix i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--g-600);
+}
+
+.panel__matrix i.is-lit {
+  background: var(--text-secondary);
+}
+
+.panel__name {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.panel__label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.panel__name small {
+  color: var(--text-tertiary);
+  font-size: 0.6875rem;
+  line-height: 1.3;
+}
+
+.panel__effect {
+  padding: 0.1875rem 0.5rem;
+  border-radius: 5px;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}
+
+@container (max-width: 26rem) {
+  .panel__body {
+    grid-template-columns: 1fr;
+  }
+
+  .panel__side {
+    display: none;
+  }
+}
+
+/* =========================================================================
+   Effect marquee
+   ========================================================================= */
+
+.marquee__viewport {
+  overflow: hidden;
+  /* Room for the cards' ring and shadow, which overflow:hidden would
+     otherwise shave off along the top and bottom edges. */
+  padding-block: 14px;
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+}
+
+.marquee__rail {
+  display: flex;
+  width: max-content;
+}
+
+.marquee__set {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.effect-card {
+  position: relative;
+  flex: none;
+  /* The gap lives on the card, so the seam between the two copies matches the
+     spacing inside them and the loop point is invisible. */
+  margin-inline-end: 1rem;
+  width: 15rem;
+  aspect-ratio: 16 / 10;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-border);
+  overflow: hidden;
+}
+
+.effect-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.8;
+  mask-image: linear-gradient(to bottom, #000 38%, transparent 94%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 38%, transparent 94%);
+}
+
+.effect-card__label {
+  position: absolute;
+  inset-inline-start: 1rem;
+  inset-block-end: 0.875rem;
+  font-size: var(--text-small);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.marquee__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  max-width: var(--layout-max);
+  margin: 1.25rem auto 0;
+  padding-inline: var(--gutter);
+}
+
+.marquee__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  padding-inline: 0.75rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-caption);
+  cursor: pointer;
+  transition-property: background-color, color, scale;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-state);
+}
+
+.marquee__toggle:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
+.marquee__toggle:active {
+  scale: 0.96;
+}
+
+.marquee__toggle .btn__icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* A triangle's optical centre sits left of its geometric one. */
+.marquee__play {
+  transform: translateX(1px);
+}
+
+/* =========================================================================
+   Install
+   ========================================================================= */
+
+.install {
+  display: grid;
+  gap: clamp(2rem, 5vw, 3rem);
+  align-items: start;
+}
+
+@media (min-width: 54rem) {
+  .install {
+    grid-template-columns: 1.15fr 1fr;
+    gap: 4rem;
+  }
+}
+
+.steps {
+  display: grid;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.step {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  counter-increment: step;
+}
+
+.step::before {
+  content: counter(step);
+  flex: none;
+  width: 1.5rem;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.step > div {
+  min-width: 0;
+}
+
+.step strong {
+  font-weight: 550;
+}
+
+.step code {
+  padding: 0.1em 0.4em;
+  border-radius: 5px;
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.step p {
+  margin-block-start: 0.25rem;
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+  line-height: 1.55;
+}
+
+.fineprint {
+  max-width: 46ch;
+  margin-block-start: 2rem;
+  padding-block-start: 1.25rem;
+  border-block-start: 1px solid var(--separator);
+  color: var(--text-tertiary);
+  font-size: var(--text-caption);
+  line-height: 1.55;
+}
+
+.release {
+  padding: 1.5rem;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-border);
+}
+
+.release__version {
+  margin-block-start: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 1.75rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.release__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0.625rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-tertiary);
+  font-size: var(--text-caption);
+}
+
+.release__meta li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.release__meta li + li::before {
+  content: '';
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.release__features {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1.375rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.release__features li {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+}
+
+.release__check {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--text-primary);
+}
+
+.release__cta {
+  width: 100%;
+  margin-block-start: 1.5rem;
+}
+
+.release__notes {
+  display: inline-block;
+  margin-block-start: 0.75rem;
+  padding-block: 0.25rem;
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+  text-decoration: none;
+  transition: color 150ms var(--ease-state);
+}
+
+.release__notes:hover {
+  color: var(--text-primary);
+}
+
+/* =========================================================================
+   Footer
+   ========================================================================= */
+
+.site-footer {
+  position: relative;
+  /* Sits on top of the last section's own gap, which is why this can stay
+     modest and still read as the largest break on the page. */
+  padding-block: clamp(4rem, 9vw, 6.5rem) 2rem;
+}
+
+/* No rule across the top: the field simply fades out into the page colour as
+   the footer takes over. */
+.site-footer::before {
+  content: '';
+  position: absolute;
+  inset: -7rem 0 0 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--page) 0%, transparent) 0%,
+    color-mix(in oklab, var(--page) 72%, transparent) 42%,
+    var(--page) 72%
+  );
+}
+
+.site-footer__top {
+  display: grid;
+  gap: 2.5rem;
+}
+
+@media (min-width: 54rem) {
+  .site-footer__top {
+    grid-template-columns: 1fr 1.25fr;
+    gap: 4rem;
+  }
+}
+
+.site-footer__brand {
+  max-width: 32ch;
+}
+
+.site-footer__brand p {
+  margin-block-start: 0.875rem;
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+  line-height: 1.55;
+}
+
+.site-footer__cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 2rem 1.5rem;
+}
+
+.site-footer__title {
+  color: var(--text-primary);
+  font-size: var(--text-caption);
+  font-weight: 560;
+}
+
+.site-footer__cols ul {
+  display: grid;
+  gap: 0.125rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer__cols a {
+  display: inline-block;
+  padding-block: 0.3125rem;
+  color: var(--text-secondary);
+  font-size: var(--text-small);
+  text-decoration: none;
+  transition: color 150ms var(--ease-state);
+}
+
+.site-footer__cols a:hover {
+  color: var(--text-primary);
+}
+
+.site-footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-block-start: clamp(2.5rem, 6vw, 3.5rem);
+  padding-block-start: 1.5rem;
+  /* A hairline, not a rule: just enough to close the block. */
+  border-block-start: 1px solid color-mix(in oklab, var(--separator) 45%, transparent);
+  color: var(--text-tertiary);
+  font-size: var(--text-caption);
+}
+
+.site-footer__bottom > :last-child {
+  margin-inline-start: auto;
+}
+
+.site-footer__bottom a {
+  padding-block: 0.25rem;
+  color: inherit;
+  text-decoration: none;
+  transition: color 150ms var(--ease-state);
+}
+
+.site-footer__bottom a:hover {
+  color: var(--text-primary);
+}
+
+/* =========================================================================
+   Motion - opt-in. Everything above renders complete without it.
+   ========================================================================= */
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+      filter: blur(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: blur(0);
+    }
+  }
+
+  .enter {
+    animation: rise 700ms var(--ease-enter) both;
+  }
+
+  .enter-1 { animation-delay: 40ms; }
+  .enter-2 { animation-delay: 140ms; }
+  .enter-3 { animation-delay: 240ms; }
+  .enter-4 { animation-delay: 340ms; }
+  .enter-5 { animation-delay: 440ms; }
+
+  /* Scroll reveals hide themselves only when JS is present to reveal them. */
+  .js [data-reveal] {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+    transition-property: opacity, transform, filter;
+    transition-duration: 700ms;
+    transition-timing-function: var(--ease-enter);
+  }
+
+  .js [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+
+  /* A second step, so a heading lands before the content under it. */
+  .js [data-reveal='2'] {
+    transition-delay: 110ms;
+  }
+
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .marquee__rail {
+    animation: marquee 76s linear infinite;
+  }
+
+  .marquee.is-paused .marquee__rail,
+  .marquee__viewport:hover .marquee__rail,
+  .marquee__viewport:focus-within .marquee__rail {
+    animation-play-state: paused;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Nothing moves, so the strip becomes an ordinary scroller and the second
+     copy and the pause control both stop earning their place. */
+  .marquee__viewport {
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .effect-card {
+    scroll-snap-align: start;
+  }
+
+  .marquee__set + .marquee__set,
+  .marquee__toggle {
+    display: none;
+  }
+}

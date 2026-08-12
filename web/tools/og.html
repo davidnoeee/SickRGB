@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400&display=block"
+      rel="stylesheet"
+    />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1200px; height: 630px; }
+      body {
+        position: relative;
+        background: #0b0b0d;
+        color: #f4f4f4;
+        font-family: Inter, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+      }
+      canvas, .scrim, .content { position: absolute; inset: 0; }
+      /* A canvas is a replaced element: inset alone leaves it at its intrinsic
+         2400x1260, so it must be told to fill the box. */
+      canvas { width: 1200px; height: 630px; }
+      /* Just enough to seat the type on the field; the wave sits outside it. */
+      .scrim {
+        background: radial-gradient(
+          ellipse 34% 40% at 50% 50%,
+          rgba(11, 11, 13, 0.88) 0%,
+          rgba(11, 11, 13, 0.6) 62%,
+          rgba(11, 11, 13, 0) 100%
+        );
+      }
+      .content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 56px 72px;
+        text-align: center;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-size: 31px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .brand img { width: 39px; height: 39px; display: block; }
+      h1 {
+        margin-top: 30px;
+        max-width: 17ch;
+        font-size: 82px;
+        font-weight: 580;
+        letter-spacing: -0.038em;
+        line-height: 1.02;
+        text-wrap: balance;
+      }
+      .url {
+        margin-top: 30px;
+        color: #9a9a9a;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 26px;
+        letter-spacing: -0.01em;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="field" width="2400" height="1260"></canvas>
+    <div class="scrim"></div>
+    <div class="content">
+      <div class="brand">
+        <img src="../public/icon.png" alt="" />
+        SickRGB
+      </div>
+      <h1>Every RGB light on your desk, in one shared space.</h1>
+      <p class="url">github.com/davidnoeee/SickRGB</p>
+    </div>
+
+    <script>
+      // A tidy lattice with even margins, four device clusters on the same
+      // grid at half pitch, and one wave far enough out that its arc wraps
+      // around the type rather than crossing it.
+      const W = 1200
+      const H = 630
+      const PITCH = 30
+
+      const ctx = document.getElementById('field').getContext('2d')
+      ctx.scale(2, 2)
+
+      const REST = [44, 44, 44]
+      const LIT = [246, 246, 246]
+      // Dead centre, out far enough to clear the type on both sides, and tight
+      // enough to read as one ring rather than a wash.
+      const ORIGIN = { x: 600, y: 315 }
+      const RADIUS = 400
+      const WIDTH = 46
+
+      const COLS = Math.floor(W / PITCH)
+      const ROWS = Math.floor(H / PITCH)
+      const OX = (W - (COLS - 1) * PITCH) / 2
+      const OY = (H - (ROWS - 1) * PITCH) / 2
+
+      // Balanced placement, uneven footprints, all on whole base cells.
+      const clusters = [
+        { i: 3, j: 2, cols: 4, rows: 2 },
+        { i: 32, j: 3, cols: 3, rows: 5 },
+        { i: 4, j: 14, cols: 5, rows: 3 },
+        { i: 33, j: 15, cols: 2, rows: 4 },
+      ]
+
+      const dots = []
+      for (let i = 0; i < COLS; i++) {
+        for (let j = 0; j < ROWS; j++) {
+          const covered = clusters.some(
+            (c) => i >= c.i && i <= c.i + c.cols && j >= c.j && j <= c.j + c.rows,
+          )
+          if (covered) continue
+          dots.push({ x: OX + i * PITCH, y: OY + j * PITCH, r: 1.7, dim: 0.5 })
+        }
+      }
+      for (const c of clusters) {
+        for (let k = 0; k <= c.cols * 2; k++) {
+          for (let m = 0; m <= c.rows * 2; m++) {
+            dots.push({
+              x: OX + (c.i + k / 2) * PITCH,
+              y: OY + (c.j + m / 2) * PITCH,
+              r: 2.3,
+              dim: 1,
+            })
+          }
+        }
+      }
+
+      // OKLCH, so one lightness is one brightness at every hue. In HSL the red
+      // end of the sweep reads far darker than the cyan end at the same value.
+      function oklchToRgb(L, C, H) {
+        const h = (H * Math.PI) / 180
+        const a = C * Math.cos(h)
+        const b = C * Math.sin(h)
+        const l_ = L + 0.3963377774 * a + 0.2158037573 * b
+        const m_ = L - 0.1055613458 * a - 0.0638541728 * b
+        const s_ = L - 0.0894841775 * a - 1.291485548 * b
+        const l = l_ ** 3
+        const m = m_ ** 3
+        const s = s_ ** 3
+        const r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s
+        const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s
+        const bl = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s
+        const enc = (c) => {
+          const v = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(Math.max(c, 0), 1 / 2.4) - 0.055
+          return Math.max(0, Math.min(255, v * 255))
+        }
+        return [enc(r), enc(g), enc(bl)]
+      }
+
+      ctx.beginPath()
+      ctx.arc(ORIGIN.x, ORIGIN.y, RADIUS, 0, Math.PI * 2)
+      ctx.strokeStyle = 'rgba(246, 246, 246, 0.05)'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+
+      for (const dot of dots) {
+        const dx = dot.x - ORIGIN.x
+        const dy = dot.y - ORIGIN.y
+        const d = Math.sqrt(dx * dx + dy * dy) - RADIUS
+        const b = Math.min(1, Math.exp(-(d * d) / (2 * WIDTH * WIDTH)))
+
+        const base = REST.map((c) => 11 + (c - 11) * dot.dim)
+        let target = LIT
+        if (b > 0.02) {
+          const hue = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360
+          target = oklchToRgb(0.76, 0.16, hue)
+        }
+
+        ctx.beginPath()
+        ctx.arc(dot.x, dot.y, dot.r * (1 + b * 0.5), 0, Math.PI * 2)
+        ctx.fillStyle = `rgb(${Math.round(base[0] + (target[0] - base[0]) * b)}, ${Math.round(
+          base[1] + (target[1] - base[1]) * b,
+        )}, ${Math.round(base[2] + (target[2] - base[2]) * b)})`
+        ctx.fill()
+      }
+    </script>
+  </body>
+</html>

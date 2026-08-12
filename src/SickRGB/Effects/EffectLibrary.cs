@@ -555,6 +555,94 @@ public sealed class AmbientEffect : Effect
 
 // =====================================================================================
 
+// =====================================================================================
+//  Stream status
+// =====================================================================================
+
+/// <summary>
+/// Turns your lights into status lamps for OBS.
+///
+/// The point is a glance. While streaming you are looking at a game, not at OBS, and the
+/// questions that matter are small and constant: am I live, is the microphone open, is the
+/// camera on me. A light on the desk answers those without a window to check.
+///
+/// A device with room for it is split into three, so one keyboard can answer all three
+/// questions at once. Anything smaller shows a single lamp, because two lights cannot say
+/// three things and pretending otherwise would make the display a puzzle rather than an
+/// answer.
+/// </summary>
+public sealed class ObsStatusEffect : Effect
+{
+    /// <summary>
+    /// Below this a device shows one lamp instead of three.
+    ///
+    /// Three is the real threshold rather than a chosen one: with two lights a left and a
+    /// right slot would land on the same light as often as not, depending on how the
+    /// device rounds.
+    /// </summary>
+    public const int MinLightsForThirds = 3;
+
+    public override string Id => "obs";
+    public override string Name => "Stream Status";
+    public override string Description =>
+        "Turns your lights into status lamps for OBS: whether you are live, whether the microphone "
+      + "is open, whether the camera is on you. Devices with three or more lights show all three at "
+      + "once, split left, middle and right; smaller ones show the first.";
+
+    public override bool UsesObs => true;
+    public override bool UsesSpeed => false;
+    public override bool UsesIntensity => false;
+
+    /// <summary>Colours come from the slots themselves, so the shared palette is unused.</summary>
+    public override string[] ColorLabels => Array.Empty<string>();
+
+    public override void Render(EffectContext ctx, ReadOnlySpan<LightPoint> points, Span<RgbF> output)
+    {
+        var slots = ctx.ObsSlots;
+
+        if (slots.Length == 0 || ctx.Obs is not { } state)
+        {
+            for (int i = 0; i < output.Length; i++) output[i] = RgbF.Black;
+            return;
+        }
+
+        // Resolved once per frame rather than per light: the answer is the same for every
+        // light on the desk, and there can be hundreds of them.
+        Span<RgbF> resolved = stackalloc RgbF[3];
+        for (int s = 0; s < 3; s++) resolved[s] = Resolve(state, s < slots.Length ? slots[s] : null);
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            var point = points[i];
+
+            // One lamp on a small device, thirds on anything larger.
+            int slot = point.DeviceLightCount < MinLightsForThirds
+                ? 0
+                : Math.Clamp((int)(point.DeviceX * 3), 0, 2);
+
+            output[i] = resolved[slot];
+        }
+    }
+
+    /// <summary>
+    /// What one slot should show right now.
+    ///
+    /// An unconfigured slot is black rather than lit, so a keyboard set up with one
+    /// indicator does not light the other two thirds in a colour that means nothing.
+    /// </summary>
+    private static RgbF Resolve(SickRGB.Obs.ObsSnapshot state, SickRGB.Obs.ObsSlot? slot)
+    {
+        if (slot is null || slot.Signal == SickRGB.Obs.ObsSignal.Nothing) return RgbF.Black;
+
+        bool condition = state.IsTrue(slot.Signal, slot.Target);
+
+        // The slot decides which way round it is: lit while true, or dark while true.
+        bool lit = slot.LitWhenTrue ? condition : !condition;
+
+        return lit ? RgbF.From(Rgb24.FromHex(slot.Color)) : RgbF.Black;
+    }
+}
+
 public static class EffectLibrary
 {
     /// <summary>Creates a fresh instance of every effect, in UI order.</summary>
@@ -572,6 +660,7 @@ public static class EffectLibrary
         new TypingHeatEffect(),
         new AudioVisualizerEffect(),
         new DirectionalSoundEffect(),
+        new ObsStatusEffect(),
         new AmbientEffect(),
     };
 

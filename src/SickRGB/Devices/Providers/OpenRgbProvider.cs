@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using SickRGB.Core;
 using SickRGB.OpenRgb;
 
@@ -80,6 +81,56 @@ public sealed class OpenRgbProvider : ILightProvider
     /// </summary>
     private const int AssumedHeaderLeds = 30;
 
+    /// <summary>
+    /// Set once an automatic start has been tried, so a run of failed rescans does not
+    /// keep launching processes or keep asking for administrator rights.
+    /// </summary>
+    private bool _autoStartTried;
+
+    /// <summary>
+    /// Starts OpenRGB when it is set up but not running, and waits for it to answer.
+    ///
+    /// Everything OpenRGB reaches - memory, motherboard, graphics card, fans - stayed dark
+    /// after every restart until someone opened Settings and started it by hand, which is
+    /// the sort of chore an app should do for you.
+    ///
+    /// Attempted once per run of the app. Failing that quietly is the right outcome: the
+    /// reason text already tells the user what to do, and a loop of administrator prompts
+    /// would be far worse than a dark motherboard.
+    /// </summary>
+    private bool TryAutoStart()
+    {
+        if (_autoStartTried) return false;
+        if (Settings is not { OpenRgbAutoStart: true } settings) return false;
+
+        _autoStartTried = true;
+
+        try
+        {
+            if (OpenRgbSetup.FindExecutable() is null) return false;
+
+            // Already up but not answering yet: wait rather than start a second copy.
+            if (!OpenRgbSetup.IsProcessRunning())
+            {
+                if (!OpenRgbSetup.Launch(Port, settings.OpenRgbLaunchElevated, out string error))
+                {
+                    Debug.WriteLine($"[OpenRGB] automatic start failed: {error}");
+                    return false;
+                }
+            }
+
+            // Long enough for a cold start with a UAC prompt in the way, and it only ever
+            // costs this much when OpenRGB genuinely is not coming up.
+            return OpenRgbSetup.WaitForServerAsync(Host, Port, 45000, CancellationToken.None)
+                               .GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[OpenRGB] automatic start threw: {ex.Message}");
+            return false;
+        }
+    }
+
     public Task<IReadOnlyList<LightDevice>> DiscoverAsync(CancellationToken ct)
     {
         var found = new List<LightDevice>();
@@ -90,8 +141,15 @@ public sealed class OpenRgbProvider : ILightProvider
 
         if (!_client.IsConnected && !_client.Connect(Host, Port))
         {
-            _reason = "OpenRGB is not running. Set it up from Settings, or start it and press Rescan.";
-            return Task.FromResult<IReadOnlyList<LightDevice>>(found);
+            if (TryAutoStart() && _client.Connect(Host, Port))
+            {
+                _reason = "";
+            }
+            else
+            {
+                _reason = "OpenRGB is not running. Set it up from Settings, or start it and press Rescan.";
+                return Task.FromResult<IReadOnlyList<LightDevice>>(found);
+            }
         }
 
         int count = _client.GetControllerCount();

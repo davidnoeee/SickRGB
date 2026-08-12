@@ -291,23 +291,20 @@ internal static class HidDiagnostics
         catch { }
         sb.AppendLine($"  Elevated       : {elevated}");
 
-        // Other RGB software holds devices open and makes everything here look broken.
-        var rivals = new[] { "OpenRGB", "iCUE", "MysticLight", "Aura", "lghub", "SignalRgb",
-                             "Synapse", "ROCCAT", "Swarm", "Turtle Beach", "Sharkoon", "Corsair",
-                             "Wooting", "SteelSeries", "GHUB", "Armoury", "FanControl" };
-        var running = new List<string>();
+        // Other lighting software holds devices open, which makes the reads below fail for
+        // reasons that have nothing to do with the hardware. OpenRGB is listed here even
+        // though it is not a conflict elsewhere: for a report, anything holding a handle
+        // matters regardless of whether we asked it to.
+        var running = SickRGB.Core.RivalApps.Running();
         try
         {
-            foreach (var p in System.Diagnostics.Process.GetProcesses())
-            {
-                if (rivals.Any(r => p.ProcessName.Contains(r, StringComparison.OrdinalIgnoreCase)))
-                    running.Add(p.ProcessName);
-            }
+            if (System.Diagnostics.Process.GetProcessesByName("OpenRGB").Length > 0)
+                running.Insert(0, "OpenRGB");
         }
         catch { }
 
         sb.AppendLine(running.Count > 0
-            ? $"  Other RGB apps : {string.Join(", ", running.Distinct().OrderBy(x => x))}"
+            ? $"  Other RGB apps : {string.Join(", ", running)}"
             : "  Other RGB apps : none detected");
 
         if (running.Count > 0)

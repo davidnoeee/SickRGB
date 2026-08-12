@@ -70,6 +70,10 @@ public sealed class ColorPickerButton : StackPanel
             Margin = new Thickness(0, 6, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Center,
             Foreground = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x8A, 0xFF, 0xFF, 0xFF)),
+
+            // Without a caption the label would still reserve its line, leaving the swatch
+            // floating above whatever sits beside it.
+            Visibility = string.IsNullOrEmpty(caption) ? Visibility.Collapsed : Visibility.Visible,
         };
 
         Children.Add(_swatch);

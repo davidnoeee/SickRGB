@@ -126,6 +126,13 @@ public sealed class EffectContext
     /// <summary>False when nothing has been heard yet, so the UI can say so.</summary>
     public bool AudioHasSignal;
 
+    // ---- stream status only ----
+    /// <summary>What OBS is doing, or null when nothing is listening to it.</summary>
+    public SickRGB.Obs.ObsSnapshot? Obs;
+
+    /// <summary>The three slots, as configured. Index 0 is left, 1 middle, 2 right.</summary>
+    public SickRGB.Obs.ObsSlot[] ObsSlots = Array.Empty<SickRGB.Obs.ObsSlot>();
+
     /// <summary>Maps the 0..1 speed slider onto a useful multiplier.</summary>
     public double SpeedFactor => 0.25 + Speed * 2.75;
 
@@ -153,6 +160,9 @@ public abstract class Effect
 
     /// <summary>True if this effect listens to audio.</summary>
     public virtual bool UsesAudio => false;
+
+    /// <summary>True if this effect follows OBS, so the connection is only opened when wanted.</summary>
+    public virtual bool UsesObs => false;
 
     public virtual bool UsesSpeed => true;
     public virtual bool UsesIntensity => false;

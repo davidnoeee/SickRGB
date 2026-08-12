@@ -361,12 +361,17 @@ public sealed class EffectEngine : IDisposable
         // a reason to keep listening.
         bool overlayWanted = _settings.DirectionOverlay && _settings.DirectionOverlayOpacity > 0.001;
         UpdateAudio(overlayWanted || _groups.Any(g => g.Effect.UsesAudio), delta);
+        UpdateObs(_groups.Any(g => g.Effect.UsesObs));
 
         double brightness = Math.Clamp(_settings.Brightness, 0, 1);
         bool deviceLost = false;
         bool anyFailureThisFrame = false;
 
         bool overlayActive = overlayWanted && _direction is not null;
+
+        // Snapshotted once rather than per group: the slots are the same for every device,
+        // and copying the list for each one would allocate on every frame.
+        var obsSlots = _settings.ObsSlots.ToArray();
 
         foreach (var group in _groups)
         {
@@ -391,6 +396,8 @@ public sealed class EffectEngine : IDisposable
             _ctx.AudioLayout = _settings.AudioLayout;
             _ctx.AudioFloor = _settings.AudioFloor;
             _ctx.AudioHasSignal = _audio?.HasSignal ?? false;
+            _ctx.Obs = _obs?.Snapshot;
+            _ctx.ObsSlots = obsSlots;
 
             Array.Clear(group.Scratch);
             group.Effect.Render(_ctx, group.Points, group.Scratch);
@@ -597,6 +604,57 @@ public sealed class EffectEngine : IDisposable
             _settings.AudioTargetProcessId ?? 0, _settings.AudioTargetProcessName);
 
         return _resolvedAudioProcess;
+    }
+
+    private SickRGB.Obs.ObsClient? _obs;
+    private string _obsKey = "";
+
+    /// <summary>What OBS is doing, for the settings UI to report.</summary>
+    public SickRGB.Obs.ObsSnapshot? ObsSnapshot => _obs?.Snapshot;
+
+    /// <summary>
+    /// Opens or closes the OBS connection, and keeps it pointed at the right inputs.
+    ///
+    /// Only connected to while an effect actually wants it. Holding a socket open against
+    /// someone's streaming software for no reason is exactly the sort of thing that gets an
+    /// app blamed for a dropped frame.
+    /// </summary>
+    private void UpdateObs(bool wanted)
+    {
+        if (!wanted)
+        {
+            if (_obs is not null)
+            {
+                var closing = _obs;
+                _obs = null;
+                _obsKey = "";
+                _ = closing.DisposeAsync();
+            }
+            return;
+        }
+
+        // Reconnect only when the connection details actually change, not on every frame.
+        string key = $"{_settings.ObsHost}:{_settings.ObsPort}:{_settings.ObsPassword}";
+
+        if (_obs is not null && key != _obsKey)
+        {
+            var closing = _obs;
+            _obs = null;
+            _ = closing.DisposeAsync();
+        }
+
+        if (_obs is null)
+        {
+            _obsKey = key;
+            _obs = new SickRGB.Obs.ObsClient(_settings.ObsHost, _settings.ObsPort, _settings.ObsPassword);
+            _obs.Start();
+        }
+
+        // Which inputs matter can change without the connection needing to.
+        var slots = _settings.ObsSlots;
+        string mic = slots.FirstOrDefault(s => s.Signal == SickRGB.Obs.ObsSignal.MicrophoneLive)?.Target ?? "";
+        string camera = slots.FirstOrDefault(s => s.Signal == SickRGB.Obs.ObsSignal.CameraLive)?.Target ?? "";
+        _obs.SetTargets(mic, camera);
     }
 
     /// <summary>Whatever went wrong starting audio capture, for the UI to show.</summary>

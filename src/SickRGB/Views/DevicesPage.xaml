@@ -16,6 +16,22 @@
         <ScrollViewer Grid.Row="1" Margin="32,22,18,24" VerticalScrollBarVisibility="Auto">
             <StackPanel MaxWidth="900" HorizontalAlignment="Left">
 
+                <!--
+                    Only appears when another lighting program is actually running, and it
+                    names it. A permanent warning about software nobody has installed is
+                    noise, and noise is what people learn to scroll past.
+                -->
+                <Border x:Name="ConflictCard" Style="{StaticResource SubtleCard}"
+                        Margin="0,0,0,14" Padding="16,13,16,13" Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock Text="Another lighting program is running"
+                                   Style="{StaticResource StrongText}"
+                                   Foreground="{StaticResource WarningBrush}"/>
+                        <TextBlock x:Name="ConflictText" Style="{StaticResource CaptionText}"
+                                   Margin="0,5,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Text="Sources" Style="{StaticResource SectionHeaderText}"/>
                 <StackPanel x:Name="ProviderPanel"/>
 

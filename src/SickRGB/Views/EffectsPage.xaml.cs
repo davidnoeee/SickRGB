@@ -140,6 +140,9 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         IntensitySection.Visibility = effect.UsesIntensity ? Visibility.Visible : Visibility.Collapsed;
         AmbientSection.Visibility = effect.UsesScreen ? Visibility.Visible : Visibility.Collapsed;
 
+        ObsSection.Visibility = effect is ObsStatusEffect ? Visibility.Visible : Visibility.Collapsed;
+        if (effect is ObsStatusEffect) BuildObsSection();
+
         // The overlay is offered on anything except the directional effect itself, where
         // it would be layering the effect over a copy of itself.
         bool isDirection = effect is DirectionalSoundEffect;
@@ -521,6 +524,271 @@ public partial class EffectsPage : UserControl, IRefreshablePage
     {
         _services.Engine.ResetAudioBalance();
         UpdateBalanceLabels();
+    }
+
+    // ================================================================== stream status
+
+    private static readonly (SickRGB.Obs.ObsSignal Signal, string Label)[] ObsSignals =
+    {
+        (SickRGB.Obs.ObsSignal.Nothing,         "Nothing"),
+        (SickRGB.Obs.ObsSignal.Streaming,       "Live on stream"),
+        (SickRGB.Obs.ObsSignal.Recording,       "Recording"),
+        (SickRGB.Obs.ObsSignal.RecordingPaused, "Recording paused"),
+        (SickRGB.Obs.ObsSignal.VirtualCamera,   "Virtual camera running"),
+        (SickRGB.Obs.ObsSignal.MicrophoneLive,  "Microphone open"),
+        (SickRGB.Obs.ObsSignal.CameraLive,      "Camera on screen"),
+        (SickRGB.Obs.ObsSignal.SceneSelected,   "A particular scene is on air"),
+        (SickRGB.Obs.ObsSignal.ObsConnected,    "OBS is running"),
+    };
+
+    private static readonly string[] SlotNames = { "Left", "Middle", "Right" };
+
+    private System.Windows.Threading.DispatcherTimer? _obsTicker;
+
+    /// <summary>
+    /// Builds the three indicator rows.
+    ///
+    /// Rebuilt rather than data-bound because the choices depend on what OBS reports: the
+    /// scene and input pickers can only be filled once it has said what exists, and that
+    /// arrives after the page has already been shown.
+    /// </summary>
+    private void BuildObsSection()
+    {
+        var settings = _services.Settings;
+
+        _loading = true;
+        try
+        {
+            ObsHost.Text = settings.ObsHost;
+            ObsPort.Text = settings.ObsPort.ToString();
+            ObsPassword.Text = settings.ObsPassword;
+        }
+        finally { _loading = false; }
+
+        while (settings.ObsSlots.Count < 3) settings.ObsSlots.Add(new SickRGB.Obs.ObsSlot());
+
+        ObsSlotPanel.Children.Clear();
+        for (int i = 0; i < 3; i++) ObsSlotPanel.Children.Add(BuildObsSlot(i, settings.ObsSlots[i]));
+
+        UpdateObsStatus();
+
+        // The status line and the pickers only become useful once OBS answers, which can
+        // be at any moment after this page is opened.
+        _obsTicker ??= new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        _obsTicker.Tick -= ObsTick;
+        _obsTicker.Tick += ObsTick;
+        _obsTicker.Start();
+    }
+
+    private void ObsTick(object? sender, EventArgs e)
+    {
+        if (ObsSection.Visibility != Visibility.Visible)
+        {
+            _obsTicker?.Stop();
+            return;
+        }
+
+        UpdateObsStatus();
+        RefreshObsTargets();
+    }
+
+    private void UpdateObsStatus()
+    {
+        var snapshot = _services.Engine.ObsSnapshot;
+
+        if (snapshot is null)
+        {
+            ObsStatus.Text = "Not connected yet.";
+            return;
+        }
+
+        if (!snapshot.Connected)
+        {
+            ObsStatus.Text = snapshot.Status;
+            return;
+        }
+
+        var parts = new List<string>();
+        if (snapshot.Streaming) parts.Add("live");
+        if (snapshot.Recording) parts.Add(snapshot.RecordingPaused ? "recording paused" : "recording");
+        if (snapshot.VirtualCamera) parts.Add("virtual camera on");
+        if (snapshot.ProgramScene.Length > 0) parts.Add($"scene \"{snapshot.ProgramScene}\"");
+
+        ObsStatus.Text = parts.Count > 0
+            ? $"Connected. Right now: {string.Join(", ", parts)}."
+            : "Connected. Nothing is running in OBS at the moment.";
+    }
+
+    private UIElement BuildObsSlot(int index, SickRGB.Obs.ObsSlot slot)
+    {
+        var row = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
+
+        row.Children.Add(new TextBlock
+        {
+            Text = SlotNames[index],
+            Style = (Style)FindResource("SectionHeaderText"),
+            Margin = new Thickness(0, 0, 0, 6),
+        });
+
+        var line = new StackPanel { Orientation = Orientation.Horizontal };
+
+        // ---- what it follows ----
+        var signal = new ComboBox { Width = 210, Margin = new Thickness(0, 0, 10, 0) };
+        foreach (var (_, label) in ObsSignals) signal.Items.Add(label);
+        signal.SelectedIndex = Math.Max(0, Array.FindIndex(ObsSignals, s => s.Signal == slot.Signal));
+        line.Children.Add(signal);
+
+        // ---- which scene or input, for the signals that need one ----
+        var target = new ComboBox { Width = 190, Margin = new Thickness(0, 0, 10, 0), IsEditable = true };
+        target.Text = slot.Target;
+        line.Children.Add(target);
+
+        // ---- lit or dark while true ----
+        var sense = new ComboBox { Width = 175, Margin = new Thickness(0, 0, 10, 0) };
+        sense.Items.Add("Light up when true");
+        sense.Items.Add("Go dark when true");
+        sense.SelectedIndex = slot.LitWhenTrue ? 0 : 1;
+        line.Children.Add(sense);
+
+        // ---- colour ----
+        // The picker normally sits under a caption in a column of swatches. Here it is one
+        // control in a row, so the caption is dropped and the margins squared up to keep it
+        // on the same line as the dropdowns beside it.
+        var colour = new ColorPickerButton("", Rgb24.FromHex(slot.Color))
+        {
+            Margin = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        colour.ColorChanged += c =>
+        {
+            slot.Color = $"#{c.R:X2}{c.G:X2}{c.B:X2}";
+            _services.Settings.Save();
+        };
+        line.Children.Add(colour);
+
+        row.Children.Add(line);
+
+        var note = new TextBlock
+        {
+            Style = (Style)FindResource("CaptionText"),
+            Margin = new Thickness(0, 6, 0, 0),
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 560,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        row.Children.Add(note);
+
+        void Sync()
+        {
+            var chosen = ObsSignals[Math.Max(0, signal.SelectedIndex)].Signal;
+            bool needsTarget = chosen is SickRGB.Obs.ObsSignal.MicrophoneLive
+                                      or SickRGB.Obs.ObsSignal.CameraLive
+                                      or SickRGB.Obs.ObsSignal.SceneSelected;
+
+            target.Visibility = needsTarget ? Visibility.Visible : Visibility.Collapsed;
+
+            note.Text = chosen switch
+            {
+                SickRGB.Obs.ObsSignal.MicrophoneLive =>
+                    "Pick the audio input to watch. It lights while that input is unmuted.",
+                SickRGB.Obs.ObsSignal.CameraLive =>
+                    "Pick the camera source. It lights while that source is on screen in the scene on air.",
+                SickRGB.Obs.ObsSignal.SceneSelected =>
+                    "Pick the scene. It lights while that scene is the one on air.",
+                _ => "",
+            };
+
+            note.Visibility = note.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        signal.SelectionChanged += (_, _) =>
+        {
+            if (_loading) return;
+            slot.Signal = ObsSignals[Math.Max(0, signal.SelectedIndex)].Signal;
+            _services.Settings.Save();
+            Sync();
+            RefreshObsTargets();
+        };
+
+        sense.SelectionChanged += (_, _) =>
+        {
+            if (_loading) return;
+            slot.LitWhenTrue = sense.SelectedIndex == 0;
+            _services.Settings.Save();
+        };
+
+        // Editable so a scene that OBS has not reported yet can still be typed in, which
+        // matters because the effect is often set up before OBS is even open.
+        target.LostFocus += (_, _) =>
+        {
+            if (_loading) return;
+            slot.Target = target.Text?.Trim() ?? "";
+            _services.Settings.Save();
+        };
+
+        target.SelectionChanged += (_, _) =>
+        {
+            if (_loading || target.SelectedItem is not string picked) return;
+            slot.Target = picked;
+            _services.Settings.Save();
+        };
+
+        Sync();
+        row.Tag = (signal, target);
+        return row;
+    }
+
+    /// <summary>Fills the scene and input pickers once OBS has said what it has.</summary>
+    private void RefreshObsTargets()
+    {
+        var snapshot = _services.Engine.ObsSnapshot;
+        if (snapshot is null || !snapshot.Connected) return;
+
+        for (int i = 0; i < ObsSlotPanel.Children.Count; i++)
+        {
+            if (ObsSlotPanel.Children[i] is not StackPanel row
+             || row.Tag is not ValueTuple<ComboBox, ComboBox> pair) continue;
+
+            var (signal, target) = pair;
+            var chosen = ObsSignals[Math.Max(0, signal.SelectedIndex)].Signal;
+
+            var options = chosen switch
+            {
+                SickRGB.Obs.ObsSignal.SceneSelected => snapshot.Scenes.ToList(),
+                SickRGB.Obs.ObsSignal.MicrophoneLive =>
+                    snapshot.Inputs.Where(x => x.IsAudioInput).Select(x => x.Name).ToList(),
+                SickRGB.Obs.ObsSignal.CameraLive =>
+                    snapshot.Inputs.Where(x => x.IsVideoInput).Select(x => x.Name).ToList(),
+                _ => new List<string>(),
+            };
+
+            // Rebuilding the list resets the text, so it is only touched when it changed.
+            if (target.Items.Count == options.Count
+             && options.Select((o, n) => target.Items[n] as string == o).All(x => x)) continue;
+
+            string current = target.Text;
+            _loading = true;
+            try
+            {
+                target.Items.Clear();
+                foreach (var option in options) target.Items.Add(option);
+                target.Text = current;
+            }
+            finally { _loading = false; }
+        }
+    }
+
+    private void ObsConnection_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (_loading) return;
+
+        var settings = _services.Settings;
+        settings.ObsHost = ObsHost.Text.Trim();
+        settings.ObsPassword = ObsPassword.Text;
+        if (int.TryParse(ObsPort.Text.Trim(), out int port) && port is > 0 and < 65536)
+            settings.ObsPort = port;
+
+        settings.Save();
     }
 
     // ================================================================== overlay

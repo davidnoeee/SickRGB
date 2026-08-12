@@ -31,8 +31,43 @@ public partial class DevicesPage : UserControl, IRefreshablePage
 
     public void OnShown()
     {
+        ShowConflicts();
         BuildProviders();
         BuildDevices();
+    }
+
+    /// <summary>
+    /// Names any other lighting software that is running.
+    ///
+    /// Two programs driving one keyboard both keep sending colours, and the hardware shows
+    /// whichever arrived last. That reads as flickering rather than as a conflict, so the
+    /// app that is visibly misbehaving gets the blame. It is worst straight after a
+    /// restart, because vendor software almost always launches itself at sign-in and the
+    /// fight is under way before anyone has opened anything.
+    /// </summary>
+    private void ShowConflicts()
+    {
+        var running = SickRGB.Core.RivalApps.Running();
+
+        if (running.Count == 0)
+        {
+            ConflictCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        string list = running.Count == 1
+            ? running[0]
+            : string.Join(", ", running.Take(running.Count - 1)) + " and " + running[^1];
+
+        ConflictText.Text =
+            $"{list} {(running.Count == 1 ? "is" : "are")} running. Two programs cannot drive the same "
+          + "lights at once: both keep sending colours and your hardware shows whichever arrived last, "
+          + "which looks like flickering.\n\n"
+          + "Close it, and turn off its start with Windows setting as well. Most vendor software launches "
+          + "itself at sign-in, so otherwise the problem comes back at every restart and looks like "
+          + "SickRGB breaking on its own.";
+
+        ConflictCard.Visibility = Visibility.Visible;
     }
 
     // ================================================================== providers

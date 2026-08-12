@@ -203,6 +203,13 @@ public partial class OpenRgbSetupWindow : Window
             }
 
             _needsRestartForElevation = false;
+
+            // Setup worked, so from now on SickRGB can start OpenRGB by itself rather than
+            // leaving everything behind it dark until someone comes here and does it.
+            s.OpenRgbAutoStart = true;
+            s.OpenRgbLaunchElevated = elevate;
+            s.Save();
+
             await ConnectAndRescanAsync();
         }
         catch (OperationCanceledException)

@@ -132,6 +132,52 @@ public sealed class AppSettings
     public string OpenRgbHost { get; set; } = "127.0.0.1";
     public int OpenRgbPort { get; set; } = 6742;
 
+    /// <summary>
+    /// Start OpenRGB automatically when it is needed and is not already running.
+    ///
+    /// Switched on once setup has succeeded, because until then there is nothing to
+    /// start. Without it, everything OpenRGB reaches stays dark after a restart until
+    /// someone opens Settings and starts it by hand.
+    /// </summary>
+    public bool OpenRgbAutoStart { get; set; }
+
+    /// <summary>
+    /// Whether the automatic start asks for administrator rights, remembered from setup.
+    ///
+    /// Memory and most motherboards sit behind SMBus, which OpenRGB can only reach when
+    /// it is elevated. That means a prompt at every sign-in, so it is only ever used
+    /// because the last successful setup used it.
+    /// </summary>
+    public bool OpenRgbLaunchElevated { get; set; } = true;
+
+    // ---- OBS ----
+    public string ObsHost { get; set; } = "127.0.0.1";
+    public int ObsPort { get; set; } = 4455;
+
+    /// <summary>
+    /// The websocket password from OBS.
+    ///
+    /// Stored as typed. It is a local password for a server that only listens on this
+    /// machine by default, and hiding it in the settings file would suggest a protection
+    /// that is not there: anything able to read this file can read whatever we encrypted
+    /// it with too.
+    /// </summary>
+    public string ObsPassword { get; set; } = "";
+
+    /// <summary>
+    /// The three indicator slots: left, middle, right.
+    ///
+    /// The defaults are the three things a streamer glances at, in the order they sit on a
+    /// keyboard, and coloured the way stage equipment already is: red for on air, green
+    /// for an open microphone.
+    /// </summary>
+    public List<SickRGB.Obs.ObsSlot> ObsSlots { get; set; } = new()
+    {
+        new SickRGB.Obs.ObsSlot { Signal = SickRGB.Obs.ObsSignal.Streaming,      Color = "#FF2D2D" },
+        new SickRGB.Obs.ObsSlot { Signal = SickRGB.Obs.ObsSignal.CameraLive,     Color = "#FF8A14" },
+        new SickRGB.Obs.ObsSlot { Signal = SickRGB.Obs.ObsSignal.MicrophoneLive, Color = "#1FBF5A" },
+    };
+
     // ---- shell ----
     /// <summary>
     /// Windows 11 Mica backdrop.

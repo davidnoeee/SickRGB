@@ -109,13 +109,23 @@ public partial class App : Application
         listener.Start();
     }
 
-    /// <summary>Matches the app's accent colour to the one chosen in Windows.</summary>
+    /// <summary>
+    /// Fixes the accent at white rather than following the Windows one.
+    ///
+    /// The app used to match the system accent, which is the polite thing for most
+    /// software to do and the wrong thing here. Every window in this app is a frame around
+    /// colour the hardware is producing, and a coloured accent competes with that. On the
+    /// layout canvas it is worse than competition: a blue selection ring beside a blue LED
+    /// reads as part of the same picture rather than as chrome.
+    ///
+    /// White has no such reading. Everything drawn on top of it inverts to near-black,
+    /// which the theme handles through TextOnAccentBrush.
+    /// </summary>
     private void ApplySystemAccent()
     {
-        var accent = AccentColors.GetAccent();
-        Resources["AccentColor"] = accent;
-        Resources["AccentLightColor"] = AccentColors.Lighten(accent, 0.18);
-        Resources["AccentDarkColor"] = AccentColors.Darken(accent, 0.18);
+        Resources["AccentColor"] = System.Windows.Media.Colors.White;
+        Resources["AccentLightColor"] = System.Windows.Media.Colors.White;
+        Resources["AccentDarkColor"] = System.Windows.Media.Color.FromRgb(0xD6, 0xD6, 0xD6);
     }
 
     protected override void OnExit(ExitEventArgs e)

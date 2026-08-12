@@ -7,9 +7,23 @@
          AccentColor is replaced at runtime with the user's real system accent.
          ========================================================================= -->
 
-    <Color x:Key="AccentColor">#FF6A2B</Color>
-    <Color x:Key="AccentLightColor">#FF8A55</Color>
-    <Color x:Key="AccentDarkColor">#D9541C</Color>
+    <!--
+        White is the accent.
+
+        Everything this app is for is coloured: the whole window is a frame around light
+        the hardware is producing. A coloured accent competes with that, and on the layout
+        canvas it actively misleads, because a blue selection ring next to a blue LED reads
+        as part of the same picture. White has no such reading, and it is the one hue the
+        devices themselves rarely sit at for long.
+
+        Anything drawn on top of the accent is therefore black. Those are marked below.
+    -->
+    <Color x:Key="AccentColor">#FFFFFF</Color>
+    <Color x:Key="AccentLightColor">#FFFFFF</Color>
+    <Color x:Key="AccentDarkColor">#D6D6D6</Color>
+
+    <!-- On an accent surface. Kept as a resource so nothing hardcodes white again. -->
+    <Color x:Key="OnAccentColor">#141414</Color>
 
     <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource AccentColor}"/>
     <SolidColorBrush x:Key="AccentLightBrush" Color="{DynamicResource AccentLightColor}"/>
@@ -37,7 +51,7 @@
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="#C8FFFFFF"/>
     <SolidColorBrush x:Key="TextTertiaryBrush" Color="#8AFFFFFF"/>
     <SolidColorBrush x:Key="TextDisabledBrush" Color="#5DFFFFFF"/>
-    <SolidColorBrush x:Key="TextOnAccentBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="TextOnAccentBrush" Color="{DynamicResource OnAccentColor}"/>
 
     <!-- Status -->
     <SolidColorBrush x:Key="SuccessBrush" Color="#6CCB5F"/>
@@ -176,7 +190,20 @@
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="Root" Background="{TemplateBinding Background}"
                             CornerRadius="5" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <!--
+                                A string content becomes a TextBlock, and the app-wide
+                                TextBlock style then sets its colour, overriding anything
+                                inherited from the button. On a white accent that renders
+                                white on white. Restating it here is what actually reaches
+                                the generated TextBlock.
+                            -->
+                            <ContentPresenter.Resources>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                                    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
+                                </Style>
+                            </ContentPresenter.Resources>
+                        </ContentPresenter>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -301,7 +328,8 @@
                             <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                             <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right"/>
                             <Setter TargetName="Knob" Property="Margin" Value="0,0,4,0"/>
-                            <Setter TargetName="Knob" Property="Fill" Value="#FFFFFF"/>
+                            <!-- The track is the accent once on, so the knob inverts with it. -->
+                            <Setter TargetName="Knob" Property="Fill" Value="{DynamicResource TextOnAccentBrush}"/>
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Knob" Property="Width" Value="14"/>
@@ -335,8 +363,10 @@
                                 Background="{StaticResource ControlBrush}"
                                 BorderBrush="{StaticResource StrokeStrongBrush}" BorderThickness="1"
                                 VerticalAlignment="Center">
+                            <!-- On the accent-filled box once ticked, so it has to be dark. -->
                             <TextBlock x:Name="Tick" Text="&#xE73E;" FontFamily="{StaticResource IconFont}"
-                                       FontSize="12" Foreground="#FFFFFF" Visibility="Collapsed"
+                                       FontSize="12" Foreground="{DynamicResource TextOnAccentBrush}"
+                                       Visibility="Collapsed"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ContentPresenter Margin="10,0,0,0" VerticalAlignment="Center"/>
@@ -367,7 +397,8 @@
                 <ControlTemplate TargetType="Thumb">
                     <Grid Width="20" Height="20">
                         <Ellipse Fill="{DynamicResource AccentBrush}"/>
-                        <Ellipse x:Name="Inner" Fill="#FFFFFF" Width="12" Height="12"/>
+                        <!-- Sits inside the accent ellipse, so it reads as the hole in it. -->
+                        <Ellipse x:Name="Inner" Fill="{DynamicResource TextOnAccentBrush}" Width="12" Height="12"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -496,6 +527,8 @@
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="CaretBrush" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}"/>
+        <!-- Highlighted text sits on the accent, so it inverts with it. -->
+        <Setter Property="SelectionTextBrush" Value="{DynamicResource TextOnAccentBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource StrokeStrongBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="10,7"/>
@@ -766,15 +799,25 @@
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="ListBoxItem">
-                                <Border x:Name="R" Background="Transparent" Padding="10,8" CornerRadius="4">
+                                <Border x:Name="R" Background="Transparent" Padding="10,8" CornerRadius="4"
+                                        BorderBrush="Transparent" BorderThickness="1">
                                     <ContentPresenter/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter TargetName="R" Property="Background" Value="{StaticResource SubtleHoverBrush}"/>
                                     </Trigger>
+                                    <!--
+                                        Marked with an outline rather than filled with the
+                                        accent. Now that the accent is white, filling the
+                                        row would put a solid white block in the middle of
+                                        a list, which shouts far louder than a selection
+                                        needs to, and it matches how a chosen effect tile
+                                        is already shown.
+                                    -->
                                     <Trigger Property="IsSelected" Value="True">
-                                        <Setter TargetName="R" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter TargetName="R" Property="Background" Value="{StaticResource ControlBrush}"/>
+                                        <Setter TargetName="R" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>

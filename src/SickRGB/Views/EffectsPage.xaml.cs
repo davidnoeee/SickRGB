@@ -97,7 +97,23 @@ public partial class EffectsPage : UserControl, IRefreshablePage
                 Foreground = new SolidColorBrush(Color.FromArgb(0x8A, 0xFF, 0xFF, 0xFF)),
             });
 
-            EffectGallery.Items.Add(new ListBoxItem { Content = panel, Tag = effect.Id });
+            // The effect itself, running behind its own name. Given the colours and speed
+            // it is actually set to, so the tile previews this configuration rather than a
+            // generic idea of the effect.
+            var preset = _services.Settings.PresetFor(effect.Id);
+            var preview = new EffectPreview(effect.Id, AppSettings.PaletteOf(preset),
+                                            preset.Speed, preset.Intensity)
+            {
+                // Cancels the tile's padding so the strip reaches the card edge instead of
+                // floating in a box inside it.
+                Margin = new Thickness(-14, -12, -14, -12),
+            };
+
+            var tile = new Grid();
+            tile.Children.Add(preview);
+            tile.Children.Add(panel);
+
+            EffectGallery.Items.Add(new ListBoxItem { Content = tile, Tag = effect.Id });
         }
     }
 

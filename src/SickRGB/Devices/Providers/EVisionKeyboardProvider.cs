@@ -50,8 +50,14 @@ public sealed class EVisionKeyboardProvider : ILightProvider
     /// <summary>The only mode that renders the colours we send rather than its own animation.</summary>
     private const byte ModeCustom = 0x14;
 
-    /// <summary>Brightness is a 0 to 4 step, not a byte.</summary>
+    /// <summary>
+    /// Brightness is a 0 to 4 step, not a byte. Confirmed against the vendor software's own
+    /// stored profiles, which cap this field at 4.
+    /// </summary>
     private const byte BrightnessMax = 0x04;
+
+    /// <summary>How often custom mode is re-sent. Cheap, and it recovers from a stray FN press.</summary>
+    private static readonly TimeSpan CustomModeInterval = TimeSpan.FromSeconds(5);
 
     /// <summary>Colour bytes per packet. The firmware rejects anything larger.</summary>
     private const int MaxColourBytesPerPacket = 0x36;
@@ -83,9 +89,24 @@ public sealed class EVisionKeyboardProvider : ILightProvider
     private const double KeySize = 19;
     private const double KeyPitch = 21;
 
+    /// <summary>How a packet reaches the board.</summary>
+    private enum Transport
+    {
+        /// <summary>Not yet decided. The first send tries each in turn.</summary>
+        Unknown,
+
+        /// <summary>SET_REPORT over the control pipe. What the vendor software uses.</summary>
+        SetOutputReport,
+
+        /// <summary>The interrupt out endpoint, for boards that have one.</summary>
+        WriteFile,
+    }
+
     private sealed class BoardState
     {
         public required SafeFileHandleEx Handle { get; init; }
+
+        public Transport Transport = Transport.Unknown;
 
         /// <summary>Colour slot for each zone, in zone order.</summary>
         public required int[] SlotForZone { get; init; }
@@ -96,7 +117,15 @@ public sealed class EVisionKeyboardProvider : ILightProvider
         /// <summary>One packet buffer, reused so a frame allocates nothing.</summary>
         public readonly byte[] Packet = new byte[PacketLength];
 
-        public bool CustomModeSet;
+        /// <summary>
+        /// When custom mode was last asserted.
+        ///
+        /// Re-sent periodically rather than once, because the board's own lighting keys
+        /// still work while the app is running. Pressing one drops it back into a built-in
+        /// animation, and colour packets alone would never bring it out again.
+        /// </summary>
+        public DateTime CustomModeSetAt = DateTime.MinValue;
+
         public bool Broken;
 
         /// <summary>Skips the write when a frame is identical to the one before it.</summary>
@@ -135,12 +164,21 @@ public sealed class EVisionKeyboardProvider : ILightProvider
 
             if (handle.IsInvalid) continue;
 
-            bool answered = ProbeReadsBack(handle);
+            var (transport, answered) = Probe(handle);
 
             var (zones, slots) = BuildKeyZones();
 
-            var state = new BoardState { Handle = handle, SlotForZone = slots };
+            var state = new BoardState { Handle = handle, SlotForZone = slots, Transport = transport };
             _open.Add(state);
+
+            // Named in the device details because it is the first thing worth knowing when
+            // a board is found but stays dark.
+            string route = transport switch
+            {
+                Transport.SetOutputReport => "control pipe",
+                Transport.WriteFile => "interrupt endpoint",
+                _ => "no route found",
+            };
 
             string name = string.IsNullOrWhiteSpace(col.Product) ? "Vendor keyboard" : col.Product;
 
@@ -152,9 +190,9 @@ public sealed class EVisionKeyboardProvider : ILightProvider
                 Role = DeviceRole.Keyboard,
                 Zones = zones,
 
-                Details = answered
-                    ? $"Per key lighting  -  {zones.Count} keys  -  USB {col.VendorId:X4}:{col.ProductId:X4}"
-                    : $"Per key lighting, not confirmed by the board  -  {zones.Count} keys  -  USB {col.VendorId:X4}:{col.ProductId:X4}",
+                Details = $"Per key lighting  -  {zones.Count} keys  -  {route}"
+                        + (answered ? "" : ", board did not answer")
+                        + $"  -  USB {col.VendorId:X4}:{col.ProductId:X4}",
 
                 Width = GridColumns * KeyPitch,
                 Height = GridRows * KeyPitch,
@@ -180,7 +218,7 @@ public sealed class EVisionKeyboardProvider : ILightProvider
     /// and some firmware answers nothing until it has been written to; the device detail
     /// line says which of the two happened.
     /// </summary>
-    private static bool ProbeReadsBack(SafeFileHandleEx handle)
+    private static (Transport Transport, bool Answered) Probe(SafeFileHandleEx handle)
     {
         try
         {
@@ -192,15 +230,24 @@ public sealed class EVisionKeyboardProvider : ILightProvider
             packet[6] = 0;                  // offset high
             Checksum(packet);
 
-            if (!HidNative.WriteFile(handle, packet, packet.Length, out _, IntPtr.Zero)) return false;
+            // Whichever of the two the board accepts is the one every later packet uses,
+            // so this both identifies the board and settles the transport in one step.
+            var transport = Transport.Unknown;
+
+            if (HidNative.HidD_SetOutputReport(handle, packet, packet.Length))
+                transport = Transport.SetOutputReport;
+            else if (HidNative.WriteFile(handle, packet, packet.Length, out _, IntPtr.Zero))
+                transport = Transport.WriteFile;
+            else
+                return (Transport.Unknown, false);
 
             var reply = HidNative.ReadWithTimeout(handle, PacketLength, 350);
-            return reply is not null;
+            return (transport, reply is not null);
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[EVision] read-back probe failed: {ex.Message}");
-            return false;
+            Debug.WriteLine($"[EVision] probe failed: {ex.Message}");
+            return (Transport.Unknown, false);
         }
     }
 
@@ -244,7 +291,8 @@ public sealed class EVisionKeyboardProvider : ILightProvider
         int count = Math.Min(zoneColors.Length, state.SlotForZone.Length);
         if (count == 0) return false;
 
-        bool changed = !state.HasSent;
+        bool reassert = DateTime.UtcNow - state.CustomModeSetAt > CustomModeInterval;
+        bool changed = !state.HasSent || reassert;
 
         for (int i = 0; i < count; i++)
         {
@@ -266,12 +314,11 @@ public sealed class EVisionKeyboardProvider : ILightProvider
 
         try
         {
-            // The board runs its own animation until it is told to render what we send,
-            // and that only has to be said once.
-            if (!state.CustomModeSet)
+            // The board runs its own animation until it is told to render what we send.
+            if (reassert)
             {
                 if (!SendMode(state, ModeCustom, BrightnessMax)) { state.Broken = true; return false; }
-                state.CustomModeSet = true;
+                state.CustomModeSetAt = DateTime.UtcNow;
             }
 
             if (!SendColours(state)) { state.Broken = true; return false; }
@@ -306,10 +353,49 @@ public sealed class EVisionKeyboardProvider : ILightProvider
             Buffer.BlockCopy(state.Colours, sent, packet, 8, size);
             Checksum(packet);
 
-            if (!HidNative.WriteFile(state.Handle, packet, packet.Length, out _, IntPtr.Zero)) return false;
+            if (!Send(state, packet)) return false;
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Puts one packet on the wire.
+    ///
+    /// Two ways exist and the right one depends on the board. This interface multiplexes
+    /// five collections onto one USB interface, and on the hardware this was built against
+    /// that interface has no interrupt out endpoint at all, so a plain write fails and
+    /// everything has to go through the control pipe as a SET_REPORT. That is the route
+    /// the vendor's own software takes: it links against HidD_SetOutputReport and nothing
+    /// else. Boards that do have the endpoint are still handled, by trying the write once
+    /// and remembering which of the two the board accepted.
+    /// </summary>
+    private static bool Send(BoardState state, byte[] packet)
+    {
+        switch (state.Transport)
+        {
+            case Transport.SetOutputReport:
+                return HidNative.HidD_SetOutputReport(state.Handle, packet, packet.Length);
+
+            case Transport.WriteFile:
+                return HidNative.WriteFile(state.Handle, packet, packet.Length, out _, IntPtr.Zero);
+
+            default:
+                if (HidNative.HidD_SetOutputReport(state.Handle, packet, packet.Length))
+                {
+                    state.Transport = Transport.SetOutputReport;
+                    return true;
+                }
+
+                if (HidNative.WriteFile(state.Handle, packet, packet.Length, out _, IntPtr.Zero))
+                {
+                    state.Transport = Transport.WriteFile;
+                    return true;
+                }
+
+                Debug.WriteLine("[EVision] neither transport accepted the packet");
+                return false;
+        }
     }
 
     /// <summary>
@@ -337,7 +423,7 @@ public sealed class EVisionKeyboardProvider : ILightProvider
 
         Checksum(packet);
 
-        return HidNative.WriteFile(state.Handle, packet, packet.Length, out _, IntPtr.Zero);
+        return Send(state, packet);
     }
 
     /// <summary>

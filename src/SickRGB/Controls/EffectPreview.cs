@@ -35,10 +35,21 @@ public sealed class EffectPreview : FrameworkElement
     /// <summary>
     /// How strongly the wash shows through.
     ///
-    /// Low on purpose: this sits under text that has to stay comfortably readable, and an
-    /// animation competing with a label is worse than no animation at all.
+    /// It sits under text that has to stay readable, so it cannot be full strength. It also
+    /// has to be plainly visible, or the tile says nothing and the whole thing is just
+    /// noise in the corner of the eye.
     /// </summary>
-    private const double Strength = 0.26;
+    private const double Strength = 0.62;
+
+    /// <summary>
+    /// Lifts the dim parts without blowing out the bright ones.
+    ///
+    /// Several effects spend most of their time near black, and taking brightness straight
+    /// to opacity left those tiles looking empty. Curving it means a half-lit part of an
+    /// effect reads as clearly present while a fully lit one is still the strongest thing
+    /// on the tile.
+    /// </summary>
+    private const double Lift = 0.55;
 
     /// <summary>
     /// Seconds for a stop to travel most of the way to its new colour.
@@ -49,7 +60,7 @@ public sealed class EffectPreview : FrameworkElement
     /// each stop toward its target keeps the shape and the colour of the effect while
     /// turning the hard edges into swells.
     /// </summary>
-    private const double Ease = 0.38;
+    private const double Ease = 0.26;
 
     private static readonly HashSet<string> NeedsStandIn = new() { "audio", "direction", "ambient" };
 
@@ -80,6 +91,7 @@ public sealed class EffectPreview : FrameworkElement
     private double _time;
     private double _nextImpulse;
     private bool _running;
+    private RgbF _restingGlow;
 
     /// <summary>
     /// One clock for every preview on the page.
@@ -128,6 +140,18 @@ public sealed class EffectPreview : FrameworkElement
         // The status effect reads its colours from the slots rather than the palette, so
         // the preview shows the ones actually configured.
         _context.ObsSlots = AppServices.Current.Settings.ObsSlots.ToArray();
+
+        // Taken from the brightest colour in the effect's palette, not the first.
+        //
+        // The reactive effects deliberately start from black, that being what a keyboard
+        // should look like when nothing is happening, so the first entry is the one colour
+        // that cannot serve as a glow. The brightest is always something the effect
+        // actually shows.
+        var brightest = _context.Colors
+            .OrderByDescending(c => Math.Max(c.R, Math.Max(c.G, c.B)))
+            .First();
+
+        _restingGlow = RgbF.From(brightest) * 0.30;
 
         Loaded += (_, _) => Attach();
         Unloaded += (_, _) => Detach();
@@ -205,15 +229,16 @@ public sealed class EffectPreview : FrameworkElement
 
         dc.PushClip(new RectangleGeometry(new Rect(0, 0, width, height), CornerRadius, CornerRadius));
 
-        // Faded towards the top left, where the name and the tag sit. The wash is at its
-        // fullest in the corner furthest from anything that has to be read.
+        // Eased back towards the top left, where the name and the tag sit, and full
+        // strength away from them. Enough of a difference to keep the label crisp, not so
+        // much that half the tile disappears.
         dc.PushOpacityMask(new LinearGradientBrush
         {
             StartPoint = new Point(0, 0),
             EndPoint = new Point(1, 1),
             GradientStops =
             {
-                new GradientStop(Color.FromArgb(0x4D, 0, 0, 0), 0),
+                new GradientStop(Color.FromArgb(0xA6, 0, 0, 0), 0),
                 new GradientStop(Color.FromArgb(0xFF, 0, 0, 0), 1),
             },
         });
@@ -232,6 +257,20 @@ public sealed class EffectPreview : FrameworkElement
 
         for (int i = 0; i < Cells; i++)
         {
+            // A resting glow under everything.
+            //
+            // The reactive effects are black between presses, which is right on a keyboard
+            // and useless on a tile: at one press every second and a half the tile would
+            // spend most of its life looking switched off. Holding a floor under the
+            // effect's own first colour keeps every tile present, and the pulses ride on
+            // top of it. Effects that are already brighter than the floor are untouched.
+            var floor = _restingGlow;
+            var value = _output[i];
+
+            _output[i] = new RgbF(Math.Max(value.R, floor.R),
+                                  Math.Max(value.G, floor.G),
+                                  Math.Max(value.B, floor.B));
+
             _eased[i] = _eased[i].Lerp(_output[i], _easeAmount);
 
             var c = _eased[i];
@@ -242,8 +281,8 @@ public sealed class EffectPreview : FrameworkElement
 
             // Brightness carries the alpha as well as the colour, so a dark part of the
             // effect fades into the tile rather than painting it black.
-            double level = Math.Max(c.R, Math.Max(c.G, c.B));
-            byte alpha = (byte)Math.Clamp(level * 255 * Strength, 0, 255);
+            double level = Math.Clamp(Math.Max(c.R, Math.Max(c.G, c.B)), 0, 1);
+            byte alpha = (byte)Math.Clamp(Math.Pow(level, Lift) * 255 * Strength, 0, 255);
 
             _wash.GradientStops[i].Color = Color.FromArgb(alpha, r, g, b);
         }

@@ -135,20 +135,11 @@ useHead({
         <li v-for="item in heroMeta" :key="item" :class="{ tnum: item === version }">{{ item }}</li>
       </ul>
 
-      <a class="hero__more enter enter-5" href="#how">
-        <span>How it works</span>
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path d="M12 5v14M6 13l6 6 6-6" />
-        </svg>
-      </a>
+      <!-- Not decoration for its own sake: the background canvas draws the
+           keyboard, mouse and pad into this box, so the hero ends on the thing
+           the app is actually for. Empty here because the drawing belongs to
+           one canvas, and the box is what tells it where to put them. -->
+      <div class="hero__desk" aria-hidden="true" />
     </section>
 
     <section id="how" class="section shell">

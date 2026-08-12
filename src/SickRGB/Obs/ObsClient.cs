@@ -141,9 +141,14 @@ public sealed class ObsClient : IAsyncDisposable
 
     private string DescribeFailure(Exception ex) => ex switch
     {
-        WebSocketException => $"OBS is not answering on {_host}:{_port}. It may not be running, or its "
-                            + "websocket server may be switched off under Tools, WebSocket Server Settings.",
-        _ => $"Not connected to OBS: {ex.Message}",
+        WebSocketException or OperationCanceledException or TimeoutException =>
+            $"Nothing is answering on {_host}:{_port}.\n\n"
+          + "1. Is OBS open?\n"
+          + "2. In OBS: Tools, WebSocket Server Settings, and tick Enable WebSocket server.\n"
+          + "3. Check the Server Port there matches the port above. OBS uses 4455 by default.\n\n"
+          + "Trying again on its own; press Refresh connection to try immediately.",
+
+        _ => $"Not connected to OBS.\n\n{ex.Message}",
     };
 
     private sealed class ObsTerminalException(string message) : Exception(message);
@@ -167,25 +172,40 @@ public sealed class ObsClient : IAsyncDisposable
         _socket = socket;
 
         await HandshakeAsync(socket, ct).ConfigureAwait(false);
-        await PrimeAsync(ct).ConfigureAwait(false);
 
-        // Nothing in the protocol tells us the peer has gone; a machine that sleeps or a
-        // cable pulled out looks exactly like an idle connection. A cheap getter on a timer
-        // is the only way to notice.
-        using var heartbeat = new CancellationTokenSource();
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, heartbeat.Token);
+        // Say so the moment the handshake lands. Everything after this is detail, and
+        // waiting for it before admitting the connection worked is what made OBS show an
+        // active session while this said nothing was connected.
+        Publish(new ObsSnapshot { Connected = true, Status = "Connected to OBS." });
 
+        using var session = new CancellationTokenSource();
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, session.Token);
+
+        // The pump has to be running before anything is asked for. A request waits for its
+        // reply, and the only thing that reads replies is the pump, so priming first meant
+        // every single request sat there until it timed out.
         var pump = ReceiveLoopAsync(socket, linked.Token);
+
+        await PrimeAsync(linked.Token).ConfigureAwait(false);
+
+        // Nothing in the protocol tells us the peer has gone; a machine that slept, or a
+        // cable pulled out, looks exactly like an idle connection.
         var beat = HeartbeatAsync(linked.Token);
 
         var finished = await Task.WhenAny(pump, beat).ConfigureAwait(false);
-        heartbeat.Cancel();
+        session.Cancel();
 
         try { await finished.ConfigureAwait(false); }
         finally
         {
             _socket = null;
             FailAllPending();
+
+            // The other task is now cancelled and will finish on its own. Awaiting it and
+            // discarding the result keeps its exception from surfacing later as an
+            // unobserved one, long after the connection it belonged to has gone.
+            var other = finished == pump ? beat : pump;
+            try { await other.ConfigureAwait(false); } catch { }
         }
     }
 
@@ -225,8 +245,16 @@ public sealed class ObsClient : IAsyncDisposable
 
         await SendAsync(new { op = 1, d = identify }, ct).ConfigureAwait(false);
 
-        var identified = await ReceiveOneAsync(socket, ct).ConfigureAwait(false)
-                         ?? throw new IOException("OBS closed the connection during the handshake.");
+        var identified = await ReceiveOneAsync(socket, ct).ConfigureAwait(false);
+
+        if (identified is null)
+        {
+            // A rejected password does not come back as an error message: OBS simply
+            // closes the socket, and the code it closes with is the only thing that says
+            // why. Reporting that as a generic disconnect is what sent people off
+            // regenerating passwords that were never the problem.
+            throw Describe(socket, authentication is not null);
+        }
 
         try
         {
@@ -328,27 +356,50 @@ public sealed class ObsClient : IAsyncDisposable
             catch (Exception ex) { Debug.WriteLine($"[OBS] could not handle a message: {ex.Message}"); }
         }
 
-        if (socket.CloseStatus is { } status)
+        if (socket.CloseStatus is not null) throw Describe(socket, false);
+    }
+
+    /// <summary>
+    /// Turns a websocket close into something worth reading.
+    ///
+    /// The close code carries the whole diagnosis, and three of them mean retrying can
+    /// never help: the password is wrong, the OBS is too old, or a person disconnected us
+    /// on purpose. Those stop the supervisor rather than looping, because a retry loop
+    /// against a rejected password writes a line in the OBS log and pops a notification
+    /// every time round.
+    /// </summary>
+    private Exception Describe(ClientWebSocket socket, bool sentPassword)
+    {
+        if (socket.CloseStatus is not { } status)
+            return new IOException("OBS closed the connection without saying why.");
+
+        int code = (int)status;
+        string reason = socket.CloseStatusDescription ?? "";
+
+        return code switch
         {
-            int code = (int)status;
-            string reason = socket.CloseStatusDescription ?? "";
+            CloseAuthenticationFailed when sentPassword => new ObsTerminalException(
+                "OBS rejected the password.\n\n"
+              + "In OBS: Tools, WebSocket Server Settings, Show Connect Info. Copy the Server Password "
+              + "exactly and paste it above. Generating a new one is not necessary, and if you do, the "
+              + "old one has to be replaced here too.\n\n"
+              + "Then press Refresh connection."),
 
-            if (code is CloseAuthenticationFailed)
-                throw new ObsTerminalException(
-                    "OBS rejected the password. Copy it again from Tools, WebSocket Server Settings, "
-                  + "Show Connect Info.");
+            CloseAuthenticationFailed => new ObsTerminalException(
+                "OBS wants a password and none was sent.\n\n"
+              + "In OBS: Tools, WebSocket Server Settings, Show Connect Info. Copy the Server Password "
+              + "into the box above, then press Refresh connection."),
 
-            if (code is CloseUnsupportedRpcVersion)
-                throw new ObsTerminalException(
-                    "This version of OBS speaks a websocket protocol SickRGB does not. OBS 28 or newer "
-                  + "is needed.");
+            CloseUnsupportedRpcVersion => new ObsTerminalException(
+                "This version of OBS speaks a websocket protocol SickRGB does not understand. "
+              + "OBS 28 or newer is needed."),
 
-            if (code is CloseSessionInvalidated)
-                throw new ObsTerminalException(
-                    "OBS disconnected SickRGB. Reopen the Stream Status settings to connect again.");
+            CloseSessionInvalidated => new ObsTerminalException(
+                "OBS disconnected SickRGB, which usually means Kick was pressed in the "
+              + "WebSocket Server Settings window. Press Refresh connection to come back."),
 
-            throw new IOException($"OBS closed the connection ({code} {reason}).");
-        }
+            _ => new IOException($"OBS closed the connection ({code}{(reason.Length > 0 ? " " + reason : "")})."),
+        };
     }
 
     private void Dispatch(JsonElement root)
@@ -545,11 +596,20 @@ public sealed class ObsClient : IAsyncDisposable
     private async Task HeartbeatAsync(CancellationToken ct)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(20));
+        int missed = 0;
 
         while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
         {
-            if (await RequestAsync("GetVersion", null, ct).ConfigureAwait(false) is null)
-                throw new IOException("OBS stopped answering.");
+            if (await RequestAsync("GetVersion", null, ct).ConfigureAwait(false) is not null)
+            {
+                missed = 0;
+                continue;
+            }
+
+            // One missed answer is not evidence of anything: OBS stalls briefly while a
+            // scene collection loads or a source starts. Tearing the connection down for
+            // that would drop the lights during exactly the moments they matter.
+            if (++missed >= 2) throw new IOException("OBS stopped answering.");
         }
     }
 

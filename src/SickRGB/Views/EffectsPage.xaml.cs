@@ -592,21 +592,41 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         RefreshObsTargets();
     }
 
+    /// <summary>
+    /// Says where the connection stands and what to do about it.
+    ///
+    /// A single line saying "not connected" is useless: the three reasons it happens need
+    /// three different actions, and telling them apart is most of the work. So the headline
+    /// says which of them it is, and the text below says which button to press in OBS.
+    /// </summary>
     private void UpdateObsStatus()
     {
         var snapshot = _services.Engine.ObsSnapshot;
 
+        var warning = (System.Windows.Media.Brush)FindResource("WarningBrush");
+        var muted = (System.Windows.Media.Brush)FindResource("TextTertiaryBrush");
+        var connected = (System.Windows.Media.Brush)FindResource("AccentBrush");
+
         if (snapshot is null)
         {
-            ObsStatus.Text = "Not connected yet.";
+            ObsLight.Foreground = muted;
+            ObsHeadline.Text = "Starting up";
+            ObsStatus.Text = "Looking for OBS.";
             return;
         }
 
         if (!snapshot.Connected)
         {
+            ObsLight.Foreground = warning;
+            ObsHeadline.Text = snapshot.Status.Contains("password", StringComparison.OrdinalIgnoreCase)
+                ? "Password not accepted"
+                : "Not connected";
             ObsStatus.Text = snapshot.Status;
             return;
         }
+
+        ObsLight.Foreground = connected;
+        ObsHeadline.Text = "Connected";
 
         var parts = new List<string>();
         if (snapshot.Streaming) parts.Add("live");
@@ -614,9 +634,29 @@ public partial class EffectsPage : UserControl, IRefreshablePage
         if (snapshot.VirtualCamera) parts.Add("virtual camera on");
         if (snapshot.ProgramScene.Length > 0) parts.Add($"scene \"{snapshot.ProgramScene}\"");
 
-        ObsStatus.Text = parts.Count > 0
-            ? $"Connected. Right now: {string.Join(", ", parts)}."
-            : "Connected. Nothing is running in OBS at the moment.";
+        string now = parts.Count > 0
+            ? $"Right now: {string.Join(", ", parts)}."
+            : "Nothing is running in OBS at the moment.";
+
+        // Naming what it found is the quickest way to see whether the pickers below have
+        // anything to offer, and whether the right things were found at all.
+        string found = $"{snapshot.Scenes.Count} scene(s), "
+                     + $"{snapshot.Inputs.Count(i => i.IsAudioInput)} audio input(s), "
+                     + $"{snapshot.Inputs.Count(i => i.IsVideoInput)} camera(s).";
+
+        ObsStatus.Text = $"{now}  {found}";
+    }
+
+    private void ObsRefresh_Click(object sender, RoutedEventArgs e)
+    {
+        // Save first: the point of pressing this is usually that the password above has
+        // just been corrected, and reconnecting with the old one would prove nothing.
+        _services.Settings.SaveNow();
+        _services.Engine.RestartObs();
+
+        ObsLight.Foreground = (System.Windows.Media.Brush)FindResource("TextTertiaryBrush");
+        ObsHeadline.Text = "Connecting";
+        ObsStatus.Text = "Trying again.";
     }
 
     private UIElement BuildObsSlot(int index, SickRGB.Obs.ObsSlot slot)

@@ -613,6 +613,22 @@ public sealed class EffectEngine : IDisposable
     public SickRGB.Obs.ObsSnapshot? ObsSnapshot => _obs?.Snapshot;
 
     /// <summary>
+    /// Throws away the OBS connection so the next frame builds a fresh one.
+    ///
+    /// Needed because some failures are deliberately final: a rejected password stops the
+    /// supervisor rather than retrying, since a loop would write to the OBS log and raise
+    /// a notification on every attempt. Once the password has been corrected there has to
+    /// be something that says "try again", and this is it.
+    /// </summary>
+    public void RestartObs()
+    {
+        var closing = _obs;
+        _obs = null;
+        _obsKey = "";
+        if (closing is not null) _ = closing.DisposeAsync();
+    }
+
+    /// <summary>
     /// Opens or closes the OBS connection, and keeps it pointed at the right inputs.
     ///
     /// Only connected to while an effect actually wants it. Holding a socket open against

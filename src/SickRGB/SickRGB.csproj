@@ -18,7 +18,7 @@
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <Product>SickRGB</Product>
     <AssemblyTitle>SickRGB</AssemblyTitle>
-    <Version>1.4.1</Version>
+    <Version>1.4.2</Version>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <!-- WinForms is referenced only for NotifyIcon + Screen enumeration -->
     <!--

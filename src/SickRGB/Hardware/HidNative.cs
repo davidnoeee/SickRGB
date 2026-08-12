@@ -56,17 +56,44 @@ internal static class HidNative
         public ushort NumberFeatureDataIndices;
     }
 
+    // Every HidD_ entry point returns BOOLEAN, which is one byte. The default marshalling
+    // for bool is the four byte Win32 BOOL, so without the U1 below the runtime reads three
+    // bytes past what the callee wrote. The upper bytes of the return register are not
+    // guaranteed to be cleared, so a false can come back as true depending on what the
+    // caller left behind. Every one of these is annotated for that reason.
+    //
+    // HidP_ functions are different: they return an NTSTATUS, which really is four bytes.
+
     [DllImport("hid.dll")] public static extern void HidD_GetHidGuid(out Guid guid);
-    [DllImport("hid.dll")] public static extern bool HidD_GetAttributes(SafeFileHandleEx h, ref HIDD_ATTRIBUTES attr);
-    [DllImport("hid.dll")] public static extern bool HidD_GetPreparsedData(SafeFileHandleEx h, out IntPtr preparsed);
-    [DllImport("hid.dll")] public static extern bool HidD_FreePreparsedData(IntPtr preparsed);
+
+    [DllImport("hid.dll")] [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool HidD_GetAttributes(SafeFileHandleEx h, ref HIDD_ATTRIBUTES attr);
+
+    [DllImport("hid.dll")] [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool HidD_GetPreparsedData(SafeFileHandleEx h, out IntPtr preparsed);
+
+    [DllImport("hid.dll")] [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool HidD_FreePreparsedData(IntPtr preparsed);
+
     [DllImport("hid.dll")] public static extern int HidP_GetCaps(IntPtr preparsed, ref HIDP_CAPS caps);
-    [DllImport("hid.dll", SetLastError = true)] public static extern bool HidD_SetFeature(SafeFileHandleEx h, byte[] buf, int len);
-    [DllImport("hid.dll", SetLastError = true)] public static extern bool HidD_GetFeature(SafeFileHandleEx h, byte[] buf, int len);
-    [DllImport("hid.dll", SetLastError = true)] public static extern bool HidD_SetOutputReport(SafeFileHandleEx h, byte[] buf, int len);
-    [DllImport("hid.dll", CharSet = CharSet.Unicode)] public static extern bool HidD_GetProductString(SafeFileHandleEx h, byte[] buf, int len);
-    [DllImport("hid.dll", CharSet = CharSet.Unicode)] public static extern bool HidD_GetManufacturerString(SafeFileHandleEx h, byte[] buf, int len);
-    [DllImport("hid.dll", CharSet = CharSet.Unicode)] public static extern bool HidD_GetSerialNumberString(SafeFileHandleEx h, byte[] buf, int len);
+
+    [DllImport("hid.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool HidD_SetFeature(SafeFileHandleEx h, byte[] buf, int len);
+
+    [DllImport("hid.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool HidD_GetFeature(SafeFileHandleEx h, byte[] buf, int len);
+
+    [DllImport("hid.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool HidD_SetOutputReport(SafeFileHandleEx h, byte[] buf, int len);
+
+    [DllImport("hid.dll", CharSet = CharSet.Unicode)] [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool HidD_GetProductString(SafeFileHandleEx h, byte[] buf, int len);
+
+    [DllImport("hid.dll", CharSet = CharSet.Unicode)] [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool HidD_GetManufacturerString(SafeFileHandleEx h, byte[] buf, int len);
+
+    [DllImport("hid.dll", CharSet = CharSet.Unicode)] [return: MarshalAs(UnmanagedType.U1)]
+    public static extern bool HidD_GetSerialNumberString(SafeFileHandleEx h, byte[] buf, int len);
 
     [DllImport("setupapi.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr SetupDiGetClassDevs(ref Guid g, IntPtr enumerator, IntPtr hwnd, int flags);

@@ -29,6 +29,7 @@ public partial class SettingsPage : UserControl, IRefreshablePage
         ChkTray.IsChecked = s.MinimiseToTray;
         ChkStartMin.IsChecked = s.StartMinimised;
         ChkMica.IsChecked = s.UseMicaBackdrop;
+        ChkHoldInGames.IsChecked = s.HoldBusLightsInGames;
 
         foreach (int fps in FpsChoices) CmbFps.Items.Add($"{fps} fps");
         int index = Array.IndexOf(FpsChoices, s.TargetFps);
@@ -137,6 +138,13 @@ public partial class SettingsPage : UserControl, IRefreshablePage
     {
         if (_loading) return;
         _services.Settings.UseMicaBackdrop = ChkMica.IsChecked == true;
+        _services.Settings.Save();
+    }
+
+    private void HoldInGames_Click(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _services.Settings.HoldBusLightsInGames = ChkHoldInGames.IsChecked == true;
         _services.Settings.Save();
     }
 

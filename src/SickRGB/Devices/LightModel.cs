@@ -135,6 +135,19 @@ public sealed class LightDevice
     /// </summary>
     public int DefaultMaxUpdatesPerSecond { get; set; }
 
+    /// <summary>
+    /// True for lights reached over a bus the rest of the PC is using too: memory on the
+    /// chipset's SMBus, and graphics cards, whose lighting controller hangs off an I2C bus
+    /// run by the graphics driver.
+    ///
+    /// Writing to these is not free for everything else. A graphics card's controller is
+    /// reached through the driver, and each write holds the driver while it goes out, so a
+    /// game drawing at that moment waits for it. Driven at 60 updates a second this cost a
+    /// game running alongside half its frame rate. While a full-screen game has focus
+    /// these lights hold their colour.
+    /// </summary>
+    public bool OnSharedBus { get; set; }
+
     public int ZoneCount => Zones.Count;
 
     /// <summary>

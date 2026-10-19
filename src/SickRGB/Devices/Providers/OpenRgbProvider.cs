@@ -185,6 +185,7 @@ public sealed class OpenRgbProvider : ILightProvider
 
             string vendor = string.IsNullOrWhiteSpace(d.Vendor) ? "" : d.Vendor + " ";
             string identity = string.IsNullOrWhiteSpace(d.Serial) ? d.Location : d.Serial;
+            bool sharedBus = IsOnSharedBus(d);
 
             var device = new LightDevice
             {
@@ -201,16 +202,9 @@ public sealed class OpenRgbProvider : ILightProvider
                 Width = width,
                 Height = height,
                 Tag = i,
-
-                // Memory sits on SMBus, which is far slower than the socket we hand the
-                // colours to. OpenRGB accepts a write in well under a millisecond and
-                // drains it to the bus in its own time, so pushing 60 frames a second at
-                // it just builds a backlog and the modules end up showing colours from
-                // seconds ago. A lower rate keeps what you see current.
-                //
-                // This is only a starting point - it can be changed per device.
-                MaxUpdatesPerSecond = d.Type == OpenRgbDeviceType.Dram ? 8 : 0,
-                DefaultMaxUpdatesPerSecond = d.Type == OpenRgbDeviceType.Dram ? 8 : 0,
+                OnSharedBus = sharedBus,
+                MaxUpdatesPerSecond = DefaultRate(d.Type, sharedBus),
+                DefaultMaxUpdatesPerSecond = DefaultRate(d.Type, sharedBus),
             };
 
             foreach (var z in resizable)
@@ -311,6 +305,38 @@ public sealed class OpenRgbProvider : ILightProvider
 
         return (zones, cols * cell, height);
     }
+
+    /// <summary>
+    /// Whether OpenRGB reaches a device over I2C or SMBus rather than USB. It reports the
+    /// location of those as "I2C: ..." - the chipset's SMBus for memory, and for graphics
+    /// cards an I2C bus owned by the graphics driver (NvAPI on NVIDIA, ADL on AMD).
+    /// </summary>
+    private static bool IsOnSharedBus(OpenRgbDevice d) =>
+        d.Location.StartsWith("I2C", StringComparison.OrdinalIgnoreCase)
+        || d.Location.StartsWith("SMBus", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// How often a device is written to before anyone chooses otherwise. Only a starting
+    /// point - it can be changed per device.
+    ///
+    /// Memory sits on SMBus, which is far slower than the socket we hand the colours to.
+    /// OpenRGB accepts a write in well under a millisecond and drains it to the bus in its
+    /// own time, so pushing 60 frames a second at it just builds a backlog and the modules
+    /// end up showing colours from seconds ago. A lower rate keeps what you see current.
+    ///
+    /// A graphics card on I2C is capped for a different reason. That bus belongs to the
+    /// graphics driver and every write holds the driver while it goes out, so anything
+    /// drawing at that moment waits for it. Uncapped, an animated effect cost a game
+    /// running alongside half its frame rate. Full-screen games are protected separately
+    /// (see <see cref="LightDevice.OnSharedBus"/>); this keeps windowed games and the
+    /// desktop from paying much either.
+    /// </summary>
+    private static int DefaultRate(OpenRgbDeviceType type, bool sharedBus) => type switch
+    {
+        OpenRgbDeviceType.Dram => 8,
+        OpenRgbDeviceType.Gpu when sharedBus => 10,
+        _ => 0,
+    };
 
     private static DeviceRole MapRole(OpenRgbDeviceType t) => t switch
     {

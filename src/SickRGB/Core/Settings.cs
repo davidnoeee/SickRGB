@@ -60,6 +60,17 @@ public sealed class AppSettings
     public int TargetFps { get; set; } = 60;
     public Dictionary<string, EffectPreset> Presets { get; set; } = new();
 
+    /// <summary>
+    /// Hold the graphics card's and memory's lights still while a full-screen game has
+    /// focus.
+    ///
+    /// On by default. Those lights are reached through the graphics driver and the
+    /// chipset's SMBus, and every update holds them up for a moment; in a game that showed
+    /// up as half the frame rate. Everything on USB keeps animating, so reactive and audio
+    /// effects still show on the keyboard and mouse.
+    /// </summary>
+    public bool HoldBusLightsInGames { get; set; } = true;
+
     // ---- devices ----
     public Dictionary<string, DeviceSettings> Devices { get; set; } = new();
 

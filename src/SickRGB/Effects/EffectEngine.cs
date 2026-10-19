@@ -86,6 +86,14 @@ public sealed class EffectEngine : IDisposable
     /// <summary>Re-send an unchanged frame at least this often, so nothing gets stuck.</summary>
     private static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(1);
 
+    /// <summary>
+    /// Whether a full-screen program - in practice a game - has focus. Asked twice a second
+    /// rather than every frame; the answer only changes when focus does.
+    /// </summary>
+    private bool _fullScreenFocused;
+    private long _nextFullScreenCheck;
+    private const int FullScreenCheckMs = 500;
+
     private DateTime _nextRescan = DateTime.MinValue;
     private int _rescanBackoffSeconds = 5;
     private volatile bool _rescanInFlight;
@@ -317,6 +325,19 @@ public sealed class EffectEngine : IDisposable
         _registry.ReleaseAll();
     }
 
+    private bool FullScreenAppFocused()
+    {
+        long now = Environment.TickCount64;
+        if (now < _nextFullScreenCheck) return _fullScreenFocused;
+        _nextFullScreenCheck = now + FullScreenCheckMs;
+
+        bool focused = FullScreen.IsFocused();
+        if (focused != _fullScreenFocused)
+            Debug.WriteLine($"[EffectEngine] full-screen program {(focused ? "focused: holding" : "gone: resuming")} lights on a shared bus");
+        _fullScreenFocused = focused;
+        return focused;
+    }
+
     /// <summary>Turns queued input events into canvas-located impulses and fans them out.</summary>
     private void DispatchImpulses(double now)
     {
@@ -373,6 +394,9 @@ public sealed class EffectEngine : IDisposable
         // and copying the list for each one would allocate on every frame.
         var obsSlots = _settings.ObsSlots.ToArray();
 
+        // See LightDevice.OnSharedBus. Decided once per frame, not per device.
+        bool holdSharedBus = _settings.HoldBusLightsInGames && FullScreenAppFocused();
+
         foreach (var group in _groups)
         {
             var preset = group.Key == GlobalGroupKey
@@ -418,6 +442,12 @@ public sealed class EffectEngine : IDisposable
                 // when the write itself is skipped because nothing changed.
                 for (int i = 0; i < device.ZoneCount; i++)
                     device.Zones[i].Current = slice[i];
+
+                // A full-screen game has focus, so lights on a shared bus keep showing what
+                // they already show. No keep-alive either, since that is a write too. The
+                // first frame after the game loses focus finds them out of date and brings
+                // them back in line through the normal path below.
+                if (holdSharedBus && device.OnSharedBus) continue;
 
                 if (!_outputs.TryGetValue(device.Key, out var output))
                 {

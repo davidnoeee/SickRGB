@@ -88,6 +88,11 @@
                             <ComboBox x:Name="CmbFps" Width="130" VerticalAlignment="Center" Margin="16,0,0,0"
                                       SelectionChanged="Fps_Changed"/>
                         </StackPanel>
+
+                        <CheckBox x:Name="ChkHoldInGames" Style="{StaticResource ToggleSwitch}" Margin="0,20,0,0"
+                                  Content="Hold graphics card and memory lighting still in full-screen games" Click="HoldInGames_Click"/>
+                        <TextBlock Style="{StaticResource CaptionText}" Margin="52,4,0,0"
+                                   Text="Their lights are reached through the graphics driver and the memory bus, and every update holds those up for a moment - in a game that can halve the frame rate. Keyboards, mice and anything else on USB keep animating."/>
                     </StackPanel>
                 </Border>
 
